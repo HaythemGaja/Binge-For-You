@@ -1,0 +1,883 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Binge For You</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { background-color: #09090b; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .pulse-border { animation: pulseBorder 2s infinite; }
+        @keyframes pulseBorder { 0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); } 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); } }
+        .glass { background: rgba(24, 24, 27, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .modal-enter { animation: modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes modalEnter { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    </style>
+</head>
+<body class="flex flex-col h-[100dvh] w-full selection:bg-indigo-500/30">
+
+    <header class="glass flex justify-between items-center p-4 border-b border-zinc-800 z-50 shrink-0">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="app.setPhase('foryou')">
+            <i class="ph-fill ph-sparkle text-indigo-500 text-2xl"></i>
+            <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent hidden sm:block">
+                Binge For You
+            </h1>
+        </div>
+        
+        <div id="nav-buttons" class="hidden flex items-center gap-2">
+            <div id="learning-indicator" class="hidden items-center gap-1.5 text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-1 rounded-md border border-indigo-500/20">
+                <i class="ph-bold ph-arrows-clockwise animate-spin"></i>
+            </div>
+            
+            <button onclick="app.openSearch()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors shrink-0">
+                <i class="ph-bold ph-magnifying-glass text-lg"></i>
+            </button>
+            <button onclick="app.openFilters()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors shrink-0">
+                <i class="ph-bold ph-funnel text-lg"></i>
+            </button>
+            <button onclick="app.openVibes()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors shrink-0 hidden sm:flex">
+                <i class="ph-bold ph-sliders text-lg"></i>
+            </button>
+            <button onclick="app.openSettings()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors shrink-0 hidden sm:flex">
+                <i class="ph-bold ph-gear text-lg"></i>
+            </button>
+
+            <div class="flex bg-zinc-800 rounded-full p-1 overflow-x-auto hide-scrollbar max-w-[55vw]">
+                <button onclick="app.setPhase('foryou')" id="nav-foryou" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors bg-zinc-700 text-white shadow-sm flex items-center gap-1 shrink-0">All</button>
+                <button onclick="app.setPhase('movies')" id="nav-movies" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors text-zinc-400 hover:text-white flex items-center gap-1 shrink-0">Movies</button>
+                <button onclick="app.setPhase('tvshows')" id="nav-tvshows" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors text-zinc-400 hover:text-white flex items-center gap-1 shrink-0">TV</button>
+                <button onclick="app.setPhase('explore')" id="nav-explore" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors text-zinc-400 hover:text-white flex items-center gap-1 shrink-0"><i class="ph-bold ph-compass"></i> Explore</button>
+                <button onclick="app.setPhase('matches')" id="nav-matches" class="px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 text-zinc-400 hover:text-white shrink-0">
+                    List <span id="match-badge" class="hidden bg-indigo-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="filters-modal" class="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-[100] hidden flex-col p-6 pt-20 fade-in items-center">
+        <button onclick="app.closeFilters()" class="absolute top-6 left-6 p-2 text-zinc-400 hover:text-white"><i class="ph-bold ph-x text-2xl"></i></button>
+        <h2 class="text-3xl font-extrabold mb-2 text-white">Feed Filters</h2>
+        <p class="text-zinc-400 text-sm mb-8 text-center max-w-sm">Narrow down your personalized AI recommendations.</p>
+        
+        <div class="w-full max-w-md space-y-6 bg-zinc-900 p-8 rounded-2xl border border-zinc-800">
+            <div>
+                <label class="block text-sm font-bold text-zinc-300 mb-2"><i class="ph-bold ph-mask-happy mr-1"></i> Genre</label>
+                <select id="filter-genre" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                    <option value="">Any Genre</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-zinc-300 mb-2"><i class="ph-bold ph-calendar mr-1"></i> Minimum Year</label>
+                <input type="number" id="filter-year" placeholder="e.g. 2010" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+                <label class="block text-sm font-bold text-zinc-300 mb-2"><i class="ph-fill ph-star text-amber-400 mr-1"></i> Minimum Rating: <span id="filter-rating-val">0</span></label>
+                <input type="range" id="filter-rating" min="0" max="9" step="1" value="0" class="w-full accent-amber-500" oninput="document.getElementById('filter-rating-val').textContent = this.value">
+            </div>
+
+            <div class="pt-4 flex gap-3">
+                <button onclick="app.resetFilters()" class="flex-1 py-3 text-zinc-400 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-sm font-bold transition-colors">Clear</button>
+                <button onclick="app.applyFilters()" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 transition-colors">Apply Filters</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="search-modal" class="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-[100] hidden flex-col p-4 pt-10 fade-in">
+        <div class="flex items-center gap-3 mb-6 w-full max-w-2xl mx-auto">
+            <button onclick="app.closeSearch()" class="p-2 text-zinc-400 hover:text-white"><i class="ph-bold ph-arrow-left text-2xl"></i></button>
+            <div class="flex-1 relative">
+                <i class="ph-bold ph-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500"></i>
+                <input id="search-input" type="text" placeholder="Search a title to train the AI..." class="w-full bg-zinc-900 border border-zinc-700 rounded-full py-3 pl-11 pr-4 text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500 transition-colors">
+            </div>
+        </div>
+        <div id="search-results" class="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-3 w-full max-w-2xl mx-auto pb-20"></div>
+    </div>
+
+    <div id="vibes-modal" class="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-[100] hidden flex-col p-6 pt-20 fade-in items-center">
+        <button onclick="app.closeVibes()" class="absolute top-6 left-6 p-2 text-zinc-400 hover:text-white"><i class="ph-bold ph-x text-2xl"></i></button>
+        <h2 class="text-3xl font-extrabold mb-2 text-white">Mood Sliders</h2>
+        <div class="w-full max-w-md space-y-8 bg-zinc-900 p-8 rounded-2xl border border-zinc-800 mt-6">
+            <div>
+                <div class="flex justify-between text-sm font-bold text-zinc-300 mb-4"><span><i class="ph-fill ph-popcorn text-amber-400 mr-1"></i> Chill & Light</span><span>Intense & Dark <i class="ph-fill ph-skull text-rose-400 ml-1"></i></span></div>
+                <input type="range" id="vibe-intensity" min="-5" max="5" value="0" class="w-full accent-indigo-500" onchange="app.updateVibes()">
+            </div>
+            <div class="pt-4 border-t border-zinc-800">
+                <div class="flex justify-between text-sm font-bold text-zinc-300 mb-4"><span><i class="ph-fill ph-flying-saucer text-emerald-400 mr-1"></i> Sci-Fi / Fantasy</span><span>Grounded / Real <i class="ph-fill ph-buildings text-blue-400 ml-1"></i></span></div>
+                <input type="range" id="vibe-realism" min="-5" max="5" value="0" class="w-full accent-indigo-500" onchange="app.updateVibes()">
+            </div>
+            <button onclick="app.resetVibes()" class="w-full mt-4 py-2 text-zinc-400 hover:text-white text-sm font-bold"><i class="ph-bold ph-arrows-clockwise"></i> Reset Vibes</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 bg-zinc-950/95 backdrop-blur-md z-[100] hidden flex-col p-6 pt-20 fade-in items-center">
+        <button onclick="app.closeSettings()" class="absolute top-6 left-6 p-2 text-zinc-400 hover:text-white"><i class="ph-bold ph-x text-2xl"></i></button>
+        <h2 class="text-3xl font-extrabold mb-8 text-white">Data & Learning</h2>
+        <div class="w-full max-w-md space-y-4 bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+            <button onclick="app.simulateDecay()" class="w-full py-3.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-xl font-bold flex items-center justify-center gap-2 border border-indigo-500/30 transition-colors mb-4"><i class="ph-bold ph-hourglass-high"></i> Simulate 1 Month Decay</button>
+            <button onclick="app.exportData()" class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold flex items-center justify-center gap-2 border border-zinc-700 transition-colors"><i class="ph-bold ph-download-simple"></i> Export Backup (JSON)</button>
+            <label class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold flex items-center justify-center gap-2 border border-zinc-700 cursor-pointer transition-colors"><i class="ph-bold ph-upload-simple"></i> Restore Backup<input type="file" class="hidden" accept=".json" onchange="app.importData(event)"></label>
+            <div class="h-px bg-zinc-800 my-4"></div>
+            <button onclick="app.resetProfile()" class="w-full py-3 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl font-bold flex items-center justify-center gap-2 border border-red-500/30 transition-colors"><i class="ph-bold ph-trash"></i> Wipe Local Data</button>
+        </div>
+    </div>
+
+    <div id="details-modal" class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[110] hidden flex-col justify-end p-4 fade-in">
+        <div class="absolute inset-0 z-0" onclick="app.closeDetails()"></div>
+        <div class="bg-zinc-900 border border-zinc-700 rounded-[2rem] w-full max-w-md mx-auto z-10 overflow-hidden modal-enter flex flex-col max-h-[85vh]">
+            <div class="relative h-48 w-full bg-zinc-800 shrink-0">
+                <img id="details-img" src="" class="w-full h-full object-cover opacity-60">
+                <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent"></div>
+                <button onclick="app.closeDetails()" class="absolute top-4 right-4 w-8 h-8 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white"><i class="ph-bold ph-x"></i></button>
+                <div class="absolute bottom-4 left-4 right-4">
+                    <h2 id="details-title" class="text-2xl font-bold line-clamp-1 drop-shadow-md">Title</h2>
+                    <p class="text-zinc-300 text-sm"><span id="details-year">2024</span> • <span id="details-type">TV Show</span> • ★ <span id="details-rating">8.0</span></p>
+                </div>
+            </div>
+            
+            <div class="p-6 overflow-y-auto hide-scrollbar flex-1">
+                <div id="details-insight-box" class="border rounded-xl p-3 flex gap-3 items-start shrink-0 bg-indigo-500/10 border-indigo-500/30 mb-4">
+                    <i class="ph-fill ph-brain text-xl text-indigo-400 shrink-0 mt-0.5"></i>
+                    <div>
+                        <p id="details-insight-label" class="text-[10px] font-bold uppercase tracking-wider mb-0.5 text-indigo-400">Why it's recommended</p>
+                        <p id="details-reason" class="text-sm text-zinc-200 leading-tight font-medium">Reason</p>
+                    </div>
+                </div>
+                <div id="details-genres" class="flex flex-wrap gap-1.5 mb-4"></div>
+                <p id="details-desc" class="text-zinc-400 text-sm leading-relaxed mb-6">Desc</p>
+            </div>
+
+            <div class="p-4 bg-zinc-900 border-t border-zinc-800 flex gap-3 shrink-0">
+                <button id="details-like-btn" class="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"><i class="ph-bold ph-plus"></i> Add to List</button>
+                <button id="details-train-btn" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-500 transition-colors"><i class="ph-bold ph-brain"></i> Train AI</button>
+            </div>
+        </div>
+    </div>
+
+    <main class="flex-1 relative overflow-hidden flex flex-col items-center w-full">
+        
+        <div id="phase-onboarding" class="w-full max-w-2xl h-full flex flex-col px-6 py-8 overflow-y-auto hide-scrollbar fade-in hidden">
+            <div class="text-center mb-8 shrink-0 mt-2">
+                <h2 class="text-4xl font-extrabold mb-3 text-white tracking-tight">Train Your Feed</h2>
+                <p class="text-zinc-400 text-base">Add 1 to 3 titles you absolutely love.</p>
+            </div>
+            <div class="w-full max-w-md mx-auto bg-zinc-900 border border-zinc-800 rounded-2xl p-4 mb-6 shrink-0">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-zinc-300 uppercase tracking-wider"><i class="ph-fill ph-database text-indigo-400 mr-1"></i> Seed Vault</h3>
+                    <span id="seed-count" class="text-xs font-bold text-zinc-500">0/3 Added</span>
+                </div>
+                <div id="seed-list" class="flex flex-col gap-2 mb-4">
+                    <div id="empty-seed-msg" class="text-center py-6 text-zinc-500 text-sm italic">Your vault is empty.<br>Tap below to search.</div>
+                </div>
+                <button onclick="app.openSearch()" class="w-full py-3 rounded-xl font-bold text-indigo-400 border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 transition-colors flex items-center justify-center gap-2 border-dashed"><i class="ph-bold ph-plus"></i> Search Title</button>
+            </div>
+            <button id="start-btn" onclick="app.completeOnboarding()" disabled class="w-full max-w-md mx-auto py-4 rounded-2xl font-bold text-lg transition-all duration-300 bg-zinc-800/50 text-zinc-600 border border-zinc-800 cursor-not-allowed shrink-0 pulse-border">Generate Feed</button>
+        </div>
+
+        <div id="loading-state" class="absolute inset-0 bg-zinc-950/80 backdrop-blur-sm z-[90] flex flex-col items-center justify-center text-center p-8 hidden fade-in">
+            <div class="relative w-20 h-20 mb-6">
+                <div class="absolute inset-0 rounded-full border-4 border-zinc-800"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin"></div>
+                <i class="ph-fill ph-brain absolute inset-0 m-auto text-3xl text-indigo-400 flex items-center justify-center"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2">Algorithm Computing</h3>
+            <p id="loading-text" class="text-zinc-400 text-sm h-12">Analyzing data arrays...</p>
+        </div>
+
+        <div id="feed-container" class="w-full h-full max-w-5xl overflow-y-auto hide-scrollbar p-4 pb-20 hidden relative">
+            <div class="flex justify-between items-end mb-6">
+                <div>
+                    <h2 id="feed-title" class="text-2xl font-bold">Recommended For You</h2>
+                    <p id="feed-subtitle" class="text-zinc-400 text-sm mt-1">Scroll to discover. Tap to train.</p>
+                </div>
+                <button onclick="app.openFilters()" class="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-full border border-indigo-500/20 hover:bg-indigo-500/20 flex items-center gap-1">
+                    <i class="ph-bold ph-funnel"></i> Filters
+                </button>
+            </div>
+            <div id="feed-empty" class="text-center p-12 bg-zinc-900/50 rounded-3xl border border-zinc-800 border-dashed mt-10 hidden">
+                <i class="ph-fill ph-magnifying-glass text-5xl text-zinc-700 mx-auto mb-4 block"></i>
+                <p class="text-zinc-400 text-lg">No matches found.</p>
+                <p class="text-sm text-zinc-500 mt-2">Try clearing your filters.</p>
+            </div>
+            <div id="feed-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+            <div id="scroll-sentinel" class="w-full h-10 shrink-0 flex items-center justify-center mt-4">
+                <i id="infinite-loader" class="ph ph-spinner-gap animate-spin text-2xl text-zinc-500 hidden"></i>
+            </div>
+        </div>
+
+        <div id="phase-explore" class="w-full h-full max-w-5xl overflow-y-auto hide-scrollbar p-4 pb-20 hidden relative">
+            <div class="mb-6">
+                <h2 class="text-2xl font-bold mb-4">Explore Global Charts</h2>
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                    <button onclick="app.loadExplore('trending_day')" id="exp-trending_day" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-100 text-black">Trending Today</button>
+                    <button onclick="app.loadExplore('trending_week')" id="exp-trending_week" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Trending Week</button>
+                    <button onclick="app.loadExplore('popular_year')" id="exp-popular_year" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Popular This Year</button>
+                    <button onclick="app.loadExplore('top_rated')" id="exp-top_rated" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">All-Time Greats</button>
+                </div>
+            </div>
+            
+            <div id="explore-loader" class="w-full py-20 flex justify-center hidden">
+                <i class="ph ph-spinner-gap animate-spin text-4xl text-indigo-500"></i>
+            </div>
+
+            <div id="explore-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
+        </div>
+
+        <div id="phase-matches" class="w-full h-full max-w-5xl overflow-y-auto hide-scrollbar p-4 pb-20 hidden">
+            <div class="flex justify-between items-end mb-6">
+                <div><h2 class="text-2xl font-bold">Your Watchlist</h2></div>
+            </div>
+            <div id="matches-empty" class="text-center p-12 bg-zinc-900/50 rounded-3xl border border-zinc-800 border-dashed mt-10">
+                <i class="ph-fill ph-bookmark-simple text-5xl text-zinc-700 mx-auto mb-4 block"></i>
+                <p class="text-zinc-400 text-lg">Watchlist is empty.</p>
+            </div>
+            <div id="matches-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 hidden"></div>
+        </div>
+
+    </main>
+
+    <script>
+        const TMDB_API_KEY = '15d2ea6d0dc1d476efbca3eba2b9bbfb';
+        const BASE_URL = 'https://api.themoviedb.org/3';
+        const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+
+        const GENRE_MAP = {
+            28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime", 99: "Documentary", 18: "Drama",
+            10751: "Family", 14: "Fantasy", 36: "History", 27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance",
+            878: "Sci-Fi", 10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western", 10759: "Action & Adventure",
+            10762: "Kids", 10763: "News", 10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap", 10767: "Talk", 10768: "War & Politics"
+        };
+        const ALL_GENRES = Array.from(new Set(Object.values(GENRE_MAP))).sort();
+        const STOP_WORDS = new Set(["the","and","in","on","for","with","about","story","series","movie","film"]);
+
+        const app = {
+            phase: 'onboarding',
+            seedItems: [], 
+            
+            genreWeights: {}, themeWeights: {}, crewWeights: {}, crewNames: {},
+            fetchedCrew: new Set(), sourceMap: {}, lastDecayDate: Date.now(),
+            
+            swipedIds: new Set(), liked: [], 
+            rawApiData: [], scoredItems: [], 
+            
+            exploreData: [], currentExploreType: 'trending_day',
+            filters: { genre: '', minYear: '', minRating: 0 },
+            vibes: { intensity: 0, realism: 0 },
+
+            visibleCount: 20, currentPage: 1, isLoading: false, searchTimer: null, activeDetailsItem: null, els: {},
+
+            init: function() {
+                this.els = {
+                    phaseOnboarding: document.getElementById('phase-onboarding'),
+                    feedContainer: document.getElementById('feed-container'),
+                    phaseExplore: document.getElementById('phase-explore'),
+                    phaseMatches: document.getElementById('phase-matches'),
+                    
+                    navButtons: document.getElementById('nav-buttons'),
+                    navForYou: document.getElementById('nav-foryou'),
+                    navMovies: document.getElementById('nav-movies'),
+                    navTvShows: document.getElementById('nav-tvshows'),
+                    navExplore: document.getElementById('nav-explore'),
+                    navMatches: document.getElementById('nav-matches'),
+                    matchBadge: document.getElementById('match-badge'),
+                    
+                    learningIndicator: document.getElementById('learning-indicator'),
+                    seedList: document.getElementById('seed-list'), seedCount: document.getElementById('seed-count'), emptySeedMsg: document.getElementById('empty-seed-msg'), startBtn: document.getElementById('start-btn'),
+                    loadingState: document.getElementById('loading-state'), loadingText: document.getElementById('loading-text'),
+                    feedTitle: document.getElementById('feed-title'), feedSubtitle: document.getElementById('feed-subtitle'), feedGrid: document.getElementById('feed-grid'), feedEmpty: document.getElementById('feed-empty'),
+                    scrollSentinel: document.getElementById('scroll-sentinel'), infiniteLoader: document.getElementById('infinite-loader'),
+                    matchesEmpty: document.getElementById('matches-empty'), matchesGrid: document.getElementById('matches-grid'),
+                    exploreLoader: document.getElementById('explore-loader'), exploreGrid: document.getElementById('explore-grid'),
+                    
+                    searchModal: document.getElementById('search-modal'), searchInput: document.getElementById('search-input'), searchResults: document.getElementById('search-results'),
+                    vibesModal: document.getElementById('vibes-modal'), vIntensity: document.getElementById('vibe-intensity'), vRealism: document.getElementById('vibe-realism'),
+                    settingsModal: document.getElementById('settings-modal'),
+                    filtersModal: document.getElementById('filters-modal'), fGenre: document.getElementById('filter-genre'), fYear: document.getElementById('filter-year'), fRating: document.getElementById('filter-rating'), fRatingVal: document.getElementById('filter-rating-val'),
+                    
+                    detailsModal: document.getElementById('details-modal'), dImg: document.getElementById('details-img'), dTitle: document.getElementById('details-title'), dYear: document.getElementById('details-year'), dType: document.getElementById('details-type'), dRating: document.getElementById('details-rating'), dReason: document.getElementById('details-reason'), dGenres: document.getElementById('details-genres'), dDesc: document.getElementById('details-desc'), dLikeBtn: document.getElementById('details-like-btn'), dTrainBtn: document.getElementById('details-train-btn'), dInsightBox: document.getElementById('details-insight-box'), dInsightLabel: document.getElementById('details-insight-label')
+                };
+
+                // Populate Genre Filter Dropdown
+                ALL_GENRES.forEach(g => {
+                    const opt = document.createElement('option');
+                    opt.value = g; opt.textContent = g;
+                    this.els.fGenre.appendChild(opt);
+                });
+
+                this.els.searchInput.addEventListener('input', (e) => this.handleSearchInput(e));
+                
+                const observer = new IntersectionObserver((entries) => {
+                    if (entries[0].isIntersecting && !this.isLoading && ['foryou', 'movies', 'tvshows'].includes(this.phase)) {
+                        this.loadMoreFeed();
+                    }
+                }, { root: this.els.feedContainer, rootMargin: '300px' });
+                observer.observe(this.els.scrollSentinel);
+
+                if (!this.loadState()) {
+                    ALL_GENRES.forEach(g => this.genreWeights[g] = 0);
+                    this.setPhase('onboarding');
+                    this.renderSeedVault();
+                }
+            },
+
+            // --- FILTERS ---
+            openFilters: function() { this.els.filtersModal.classList.remove('hidden'); this.els.filtersModal.classList.add('flex'); },
+            closeFilters: function() { this.els.filtersModal.classList.add('hidden'); this.els.filtersModal.classList.remove('flex'); },
+            applyFilters: function() {
+                this.filters.genre = this.els.fGenre.value;
+                this.filters.minYear = this.els.fYear.value;
+                this.filters.minRating = parseFloat(this.els.fRating.value);
+                const activeCount = (this.filters.genre ? 1 : 0) + (this.filters.minYear ? 1 : 0) + (this.filters.minRating > 0 ? 1 : 0);
+                if(activeCount > 0) this.els.feedSubtitle.innerHTML = `<span class="text-indigo-400 font-bold">${activeCount} Filters Active.</span> Scroll to discover.`;
+                else this.els.feedSubtitle.textContent = "Scroll to discover. Tap to train.";
+                this.closeFilters(); this.visibleCount = 20; this.renderFeed();
+            },
+            resetFilters: function() { this.els.fGenre.value = ""; this.els.fYear.value = ""; this.els.fRating.value = 0; this.els.fRatingVal.textContent = "0"; this.applyFilters(); },
+
+            // --- VIBES MODAL ---
+            openVibes: function() { this.els.vibesModal.classList.remove('hidden'); this.els.vibesModal.classList.add('flex'); },
+            closeVibes: function() { this.els.vibesModal.classList.add('hidden'); this.els.vibesModal.classList.remove('flex'); },
+            updateVibes: function() { this.vibes.intensity = parseInt(this.els.vIntensity.value); this.vibes.realism = parseInt(this.els.vRealism.value); this.updateAlgorithmLogic(); },
+            resetVibes: function() { this.els.vIntensity.value = 0; this.els.vRealism.value = 0; this.updateVibes(); },
+
+            // --- SETTINGS MODAL ---
+            openSettings: function() { this.els.settingsModal.classList.remove('hidden'); this.els.settingsModal.classList.add('flex'); },
+            closeSettings: function() { this.els.settingsModal.classList.add('hidden'); this.els.settingsModal.classList.remove('flex'); },
+
+            // --- SAVE/LOAD & DECAY ---
+            saveState: function() {
+                const data = {
+                    seedItems: this.seedItems,
+                    genreWeights: this.genreWeights,
+                    themeWeights: this.themeWeights,
+                    crewWeights: this.crewWeights,
+                    crewNames: this.crewNames,
+                    fetchedCrew: Array.from(this.fetchedCrew),
+                    sourceMap: this.sourceMap,
+                    swipedIds: Array.from(this.swipedIds),
+                    liked: this.liked,
+                    rawApiData: this.rawApiData,
+                    lastDecayDate: this.lastDecayDate,
+                    phase: this.phase === 'onboarding' ? 'onboarding' : 'foryou' 
+                };
+                localStorage.setItem('bingeForYouState', JSON.stringify(data));
+            },
+            loadState: function() {
+                const saved = localStorage.getItem('bingeForYouState');
+                if (saved) {
+                    try {
+                        const data = JSON.parse(saved);
+                        this.seedItems = data.seedItems || [];
+                        this.genreWeights = data.genreWeights || {};
+                        this.themeWeights = data.themeWeights || {};
+                        this.crewWeights = data.crewWeights || {};
+                        this.crewNames = data.crewNames || {};
+                        this.fetchedCrew = new Set(data.fetchedCrew || []);
+                        this.sourceMap = data.sourceMap || {};
+                        this.swipedIds = new Set(data.swipedIds || []);
+                        this.liked = data.liked || [];
+                        this.rawApiData = data.rawApiData || [];
+                        this.lastDecayDate = data.lastDecayDate || Date.now();
+                        
+                        this.updateBadge();
+                        this.processNaturalDecay(); 
+
+                        if (this.seedItems.length > 0 && data.phase !== 'onboarding') {
+                            this.updateAlgorithmLogic(true);
+                            this.setPhase(data.phase || 'foryou');
+                        } else {
+                            this.setPhase('onboarding');
+                            this.renderSeedVault();
+                        }
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+                return false;
+            },
+            processNaturalDecay: function() {
+                const now = Date.now();
+                const daysPassed = (now - this.lastDecayDate) / (1000 * 60 * 60 * 24);
+                if (daysPassed >= 30) {
+                    const periods = Math.floor(daysPassed / 30);
+                    const decayFactor = Math.pow(0.95, periods);
+                    this.applyDecayFactor(decayFactor);
+                    this.lastDecayDate = now;
+                    this.saveState();
+                }
+            },
+            simulateDecay: function() {
+                this.applyDecayFactor(0.95);
+                this.lastDecayDate = Date.now();
+                this.saveState();
+                this.updateAlgorithmLogic(); 
+                this.closeSettings();
+                this.showLearningIndicator();
+                setTimeout(() => alert("Algorithm updated: Older preferences decayed by 5%."), 500);
+            },
+            applyDecayFactor: function(factor) {
+                Object.keys(this.genreWeights).forEach(k => this.genreWeights[k] *= factor);
+                Object.keys(this.themeWeights).forEach(k => this.themeWeights[k] *= factor);
+                Object.keys(this.crewWeights).forEach(k => this.crewWeights[k] *= factor);
+            },
+            exportData: function() {
+                const dataStr = localStorage.getItem('bingeForYouState');
+                if(!dataStr) { alert('No data to export yet.'); return; }
+                const blob = new Blob([dataStr], {type: "application/json"});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `BingeForYou_Backup_${new Date().toISOString().slice(0,10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+            importData: function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.genreWeights) {
+                            localStorage.setItem('bingeForYouState', JSON.stringify(data));
+                            window.location.reload(); 
+                        } else { alert("Invalid backup file."); }
+                    } catch(err) { alert("Invalid backup file."); }
+                };
+                reader.readAsText(file);
+            },
+
+            // --- NAVIGATION ---
+            setPhase: function(newPhase) {
+                this.phase = newPhase;
+                this.els.phaseOnboarding.classList.add('hidden');
+                this.els.feedContainer.classList.add('hidden');
+                this.els.phaseExplore.classList.add('hidden');
+                this.els.phaseMatches.classList.add('hidden');
+
+                if (newPhase === 'onboarding') {
+                    this.els.phaseOnboarding.classList.remove('hidden');
+                    this.els.navButtons.classList.add('hidden');
+                } else {
+                    this.els.navButtons.classList.remove('hidden');
+                    this.els.navButtons.classList.add('flex');
+                    
+                    [this.els.navForYou, this.els.navMovies, this.els.navTvShows, this.els.navExplore, this.els.navMatches].forEach(el => {
+                        el.className = "px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex items-center gap-1 shrink-0 text-zinc-400 hover:text-white";
+                    });
+
+                    if (newPhase === 'matches') {
+                        this.els.phaseMatches.classList.remove('hidden');
+                        this.els.navMatches.classList.add('bg-zinc-700', 'text-white', 'shadow-sm');
+                        this.els.navMatches.classList.remove('text-zinc-400');
+                        this.renderMatches();
+                    } else if (newPhase === 'explore') {
+                        this.els.phaseExplore.classList.remove('hidden');
+                        this.els.navExplore.classList.add('bg-zinc-700', 'text-white', 'shadow-sm');
+                        this.els.navExplore.classList.remove('text-zinc-400');
+                        if(this.exploreData.length === 0) this.loadExplore('trending_day');
+                    } else {
+                        this.els.feedContainer.classList.remove('hidden');
+                        if (newPhase === 'foryou') { this.els.navForYou.classList.add('bg-zinc-700', 'text-white'); this.els.feedTitle.textContent = "Recommended For You"; }
+                        else if (newPhase === 'movies') { this.els.navMovies.classList.add('bg-zinc-700', 'text-white'); this.els.feedTitle.textContent = "Movies For You"; }
+                        else if (newPhase === 'tvshows') { this.els.navTvShows.classList.add('bg-zinc-700', 'text-white'); this.els.feedTitle.textContent = "TV Shows For You"; }
+                        
+                        this.visibleCount = 20; 
+                        this.renderFeed();
+                    }
+                }
+            },
+
+            // --- EXPLORE ---
+            loadExplore: async function(type) {
+                this.currentExploreType = type;
+                ['trending_day', 'trending_week', 'popular_year', 'top_rated'].forEach(t => {
+                    const btn = document.getElementById(`exp-${t}`);
+                    if(t === type) btn.className = "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-100 text-black shadow-md";
+                    else btn.className = "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white";
+                });
+
+                this.els.exploreGrid.innerHTML = '';
+                this.els.exploreLoader.classList.remove('hidden');
+
+                try {
+                    let urls = [];
+                    if(type === 'trending_day') urls = [`${BASE_URL}/trending/all/day?api_key=${TMDB_API_KEY}`];
+                    else if(type === 'trending_week') urls = [`${BASE_URL}/trending/all/week?api_key=${TMDB_API_KEY}`];
+                    else if(type === 'popular_year') {
+                        const year = new Date().getFullYear();
+                        urls = [
+                            `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&primary_release_year=${year}`,
+                            `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&first_air_date_year=${year}`
+                        ];
+                    }
+                    else if(type === 'top_rated') urls = [`${BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}`, `${BASE_URL}/tv/top_rated?api_key=${TMDB_API_KEY}`];
+
+                    const responses = await Promise.all(urls.map(url => fetch(url)));
+                    const data = await Promise.all(responses.map(res => res.json()));
+
+                    let results = [];
+                    data.forEach(d => results.push(...d.results));
+                    
+                    if(type === 'top_rated') results.sort((a,b) => b.vote_average - a.vote_average);
+                    else results.sort((a,b) => b.popularity - a.popularity);
+
+                    this.exploreData = results.map(i => this.normalizeItem(i, i.title ? 'Movie' : 'TV Show', "Global Chart Pick")).filter(i => i.image);
+                    this.renderExplore();
+                } catch(e) { console.error("Explore fetch failed", e); } finally { this.els.exploreLoader.classList.add('hidden'); }
+            },
+
+            renderExplore: function() {
+                this.els.exploreGrid.innerHTML = '';
+                this.exploreData.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.className = "bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 flex flex-col group cursor-pointer hover:border-indigo-500 transition-all fade-in";
+                    div.style.animationDelay = `${idx * 20}ms`;
+                    div.onclick = () => this.openDetails(item, 'explore');
+                    div.innerHTML = `
+                        <div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden">
+                            <img src="${item.image}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+                            <div class="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="font-bold text-sm leading-tight mb-1 line-clamp-1">${item.title}</h3>
+                            <p class="text-xs text-zinc-400">${item.year} • ${item.type}</p>
+                        </div>
+                    `;
+                    this.els.exploreGrid.appendChild(div);
+                });
+            },
+
+            // --- ONBOARDING & SEARCH ---
+            renderSeedVault: function() {
+                if (this.seedItems.length === 0) {
+                    this.els.emptySeedMsg.classList.remove('hidden');
+                    Array.from(this.els.seedList.children).forEach(child => { if (child.id !== 'empty-seed-msg') child.remove(); });
+                } else {
+                    this.els.emptySeedMsg.classList.add('hidden');
+                    this.els.seedList.innerHTML = '';
+                    this.els.seedList.appendChild(this.els.emptySeedMsg); 
+                    this.seedItems.forEach((item, index) => {
+                        const div = document.createElement('div');
+                        div.className = "flex justify-between items-center bg-zinc-800 p-2 pr-4 rounded-lg border border-zinc-700 fade-in";
+                        div.innerHTML = `<div class="flex items-center gap-3"><img src="${item.image}" class="w-8 h-10 object-cover rounded shadow"><div><h4 class="text-sm font-bold leading-tight line-clamp-1">${item.title}</h4><p class="text-[10px] text-zinc-400">${item.year}</p></div></div><button onclick="app.removeSeed(${index})" class="text-zinc-500 hover:text-red-400 transition-colors"><i class="ph-bold ph-trash"></i></button>`;
+                        this.els.seedList.appendChild(div);
+                    });
+                }
+                this.els.seedCount.textContent = `${this.seedItems.length}/3 Added`;
+                if (this.seedItems.length > 0) {
+                    this.els.startBtn.disabled = false;
+                    this.els.startBtn.className = "w-full max-w-md mx-auto py-4 rounded-2xl font-bold text-lg transition-all duration-300 bg-indigo-600 text-white hover:bg-indigo-500 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(79,70,229,0.4)] shrink-0 pulse-border";
+                } else {
+                    this.els.startBtn.disabled = true;
+                    this.els.startBtn.className = "w-full max-w-md mx-auto py-4 rounded-2xl font-bold text-lg transition-all duration-300 bg-zinc-800/50 text-zinc-600 border border-zinc-800 cursor-not-allowed shrink-0";
+                }
+            },
+            removeSeed: function(index) { this.seedItems.splice(index, 1); this.renderSeedVault(); this.saveState(); },
+            openSearch: function() {
+                if (this.phase === 'onboarding' && this.seedItems.length >= 3) { alert("Maximum 3 seeds allowed for initial training."); return; }
+                this.els.searchModal.classList.remove('hidden'); this.els.searchModal.classList.add('flex'); setTimeout(() => this.els.searchInput.focus(), 100);
+            },
+            closeSearch: function() { this.els.searchModal.classList.add('hidden'); this.els.searchModal.classList.remove('flex'); this.els.searchInput.value = ''; this.els.searchResults.innerHTML = ''; },
+            handleSearchInput: function(e) {
+                const query = e.target.value.trim(); clearTimeout(this.searchTimer);
+                if (!query) { this.els.searchResults.innerHTML = ''; return; }
+                this.els.searchResults.innerHTML = `<div class="text-center py-10"><i class="ph ph-spinner-gap animate-spin text-3xl text-indigo-500"></i></div>`;
+                this.searchTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`${BASE_URL}/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`);
+                        const data = await res.json();
+                        const validResults = data.results.filter(i => (i.media_type === 'movie' || i.media_type === 'tv') && i.poster_path);
+                        this.renderSearchResults(validResults);
+                    } catch (err) {}
+                }, 500); 
+            },
+            renderSearchResults: function(results) {
+                this.els.searchResults.innerHTML = '';
+                if (results.length === 0) { this.els.searchResults.innerHTML = `<p class="text-center text-zinc-500 py-10">No results found.</p>`; return; }
+                results.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = "flex gap-4 p-3 bg-zinc-900/80 rounded-xl border border-zinc-800 items-center cursor-pointer hover:border-indigo-500 hover:bg-zinc-900 transition-colors shrink-0";
+                    div.onclick = () => this.selectSearchResult(item);
+                    div.innerHTML = `<img src="${IMAGE_BASE_URL}${item.poster_path}" class="w-12 h-16 object-cover rounded-md shadow-md"><div class="flex-1 min-w-0"><h4 class="font-bold text-sm text-white truncate">${item.title || item.name}</h4><p class="text-xs text-zinc-400">${(item.release_date || item.first_air_date || 'N/A').substring(0,4)} • ${item.media_type === 'tv' ? 'TV Show' : 'Movie'}</p></div><button class="w-10 h-10 rounded-full bg-zinc-800 text-indigo-400 flex items-center justify-center shrink-0 border border-zinc-700"><i class="ph-bold ph-plus text-lg"></i></button>`;
+                    this.els.searchResults.appendChild(div);
+                });
+            },
+            selectSearchResult: async function(rawItem) {
+                const type = rawItem.media_type === 'tv' ? 'TV Show' : 'Movie';
+                const item = this.normalizeItem(rawItem, type);
+                if (this.phase === 'onboarding') {
+                    this.seedItems.push(item); this.renderSeedVault(); this.saveState(); this.closeSearch();
+                } else {
+                    this.closeSearch(); this.showLearningIndicator();
+                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
+                    await this.trainAlgorithm(item, `Explicitly searched for ${item.title}`);
+                }
+            },
+            completeOnboarding: async function() {
+                this.showLoadingState("Analyzing creative DNA of your seeds...");
+                try {
+                    this.els.loadingText.textContent = "Mapping behavioral networks & themes...";
+                    const fetchPromises = this.seedItems.map(seed => this.trainAlgorithm(seed, `Learned from your seed: ${seed.title}`));
+                    fetchPromises.push(this.fetchBaselineContent(1)); 
+                    fetchPromises.push(this.fetchBaselineContent(2)); 
+                    await Promise.all(fetchPromises);
+                    this.els.loadingText.textContent = "Compiling 'For You' dashboard...";
+                    this.updateAlgorithmLogic(false); 
+                    this.saveState();
+                    setTimeout(() => { this.hideLoadingState(); this.setPhase('foryou'); }, 800);
+                } catch (error) { this.hideLoadingState(); alert("Error during training phase."); }
+            },
+
+            // --- DETAILS ---
+            openDetails: function(item, sourceTab) {
+                this.activeDetailsItem = item;
+                this.els.dImg.src = item.image; this.els.dTitle.textContent = item.title; this.els.dYear.textContent = item.year; this.els.dType.textContent = item.type; this.els.dRating.textContent = item.rating; this.els.dDesc.textContent = item.description;
+                this.els.dGenres.innerHTML = '';
+                item.genres.forEach(g => {
+                    const span = document.createElement('span'); span.className = "px-2 py-1 bg-zinc-800 text-zinc-300 text-[10px] font-bold rounded-md border border-zinc-700"; span.textContent = g;
+                    this.els.dGenres.appendChild(span);
+                });
+                
+                if(sourceTab === 'explore') {
+                    this.els.dInsightBox.className = "border rounded-xl p-3 flex gap-3 items-start shrink-0 bg-zinc-800/80 border-zinc-700/50 mb-4";
+                    this.els.dInsightLabel.textContent = "Global Discovery";
+                    this.els.dInsightLabel.className = "text-[10px] font-bold uppercase tracking-wider mb-0.5 text-zinc-400";
+                    this.els.dReason.textContent = "Found via Explore Charts. Tap 'Train AI' to inject this into your personal algorithm.";
+                } else {
+                    this.els.dInsightBox.className = "border rounded-xl p-3 flex gap-3 items-start shrink-0 bg-indigo-500/10 border-indigo-500/30 mb-4";
+                    this.els.dInsightLabel.textContent = "Why it's recommended";
+                    this.els.dInsightLabel.className = "text-[10px] font-bold uppercase tracking-wider mb-0.5 text-indigo-400";
+                    this.els.dReason.textContent = item.matchReason || "Saved to your list.";
+                }
+
+                this.els.dLikeBtn.onclick = () => {
+                    this.liked.push(item); this.swipedIds.add(item.id); this.updateBadge();
+                    item.genres.forEach(g => this.genreWeights[g] += 1);
+                    this.closeDetails();
+                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
+                    this.updateAlgorithmLogic(true); this.saveState();
+                };
+                this.els.dTrainBtn.onclick = async () => {
+                    this.closeDetails(); this.showLearningIndicator();
+                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
+                    await this.trainAlgorithm(item, `Learned from manual training on ${item.title}`);
+                };
+
+                if (sourceTab === 'matches') { this.els.dLikeBtn.classList.add('hidden'); this.els.dTrainBtn.classList.remove('hidden'); } 
+                else { this.els.dLikeBtn.classList.remove('hidden'); this.els.dTrainBtn.classList.remove('hidden'); }
+
+                this.els.detailsModal.classList.remove('hidden'); this.els.detailsModal.classList.add('flex');
+            },
+            closeDetails: function() { this.els.detailsModal.classList.add('hidden'); this.els.detailsModal.classList.remove('flex'); this.activeDetailsItem = null; },
+
+            // --- ALGORITHM & BRAIN ---
+            extractThemes: function(text) { if (!text) return []; const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/); return Array.from(new Set(words.filter(w => w.length > 3 && !STOP_WORDS.has(w)))); },
+            fetchAndProcessCredits: async function(item) {
+                const type = item.type === "Movie" ? "movie" : "tv";
+                try {
+                    const res = await fetch(`${BASE_URL}/${type}/${item.rawId}/credits?api_key=${TMDB_API_KEY}`);
+                    const data = await res.json();
+                    const crew = [];
+                    if (data.crew) data.crew.filter(c => c.job === 'Director' || c.job === 'Executive Producer').forEach(d => crew.push({ id: d.id, name: d.name }));
+                    if (data.cast) data.cast.slice(0, 3).forEach(c => crew.push({ id: c.id, name: c.name }));
+                    crew.forEach(c => {
+                        const key = `crew_${c.id}`;
+                        this.crewWeights[key] = (this.crewWeights[key] || 0) + 1;
+                        this.crewNames[key] = c.name; 
+                        if (this.crewWeights[key] >= 2 && !this.fetchedCrew.has(key)) {
+                            this.fetchedCrew.add(key);
+                            this.fetchWorksByPerson(c.id, c.name); 
+                        }
+                    });
+                } catch (e) {}
+            },
+            fetchWorksByPerson: async function(personId, personName) {
+                try {
+                    const endpoints = [
+                        fetch(`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_people=${personId}&sort_by=popularity.desc`),
+                        fetch(`${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&with_people=${personId}&sort_by=popularity.desc`)
+                    ];
+                    const responses = await Promise.all(endpoints);
+                    const data = await Promise.all(responses.map(res => res.json()));
+                    const reason = `Features a favorite cast/crew member: ${personName}`;
+                    const newItems = [
+                        ...data[0].results.map(i => this.normalizeItem(i, "Movie", reason)),
+                        ...data[1].results.map(i => this.normalizeItem(i, "TV Show", reason))
+                    ].filter(i => i.image);
+                    const existingIds = new Set(this.rawApiData.map(i => i.id));
+                    const filteredNew = newItems.filter(i => !existingIds.has(i.id));
+                    this.rawApiData = [...this.rawApiData, ...filteredNew];
+                } catch (e) {}
+            },
+            trainAlgorithm: async function(item, networkReason) {
+                this.liked.push(item); this.swipedIds.add(item.id); this.updateBadge();
+                item.genres.forEach(g => this.genreWeights[g] += 4);
+                const themes = this.extractThemes(item.description);
+                themes.forEach(t => this.themeWeights[t] = (this.themeWeights[t] || 0) + 1.5);
+                await this.fetchAndProcessCredits(item);
+                await this.fetchDeepDive(item, networkReason);
+                this.updateAlgorithmLogic(true); this.saveState();
+            },
+            normalizeItem: function(item, type, sourceReason = null) {
+                const id = `${type === 'Movie' ? 'movie' : 'tv'}_${item.id}`;
+                if (sourceReason) this.sourceMap[id] = sourceReason;
+                return { id: id, rawId: item.id, title: item.title || item.name, type: type, year: (item.release_date || item.first_air_date || "N/A").substring(0, 4), genres: (item.genre_ids || []).map(gid => GENRE_MAP[gid]).filter(Boolean), description: item.overview || "No description available.", image: item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : null, rating: item.vote_average ? item.vote_average.toFixed(1) : "N/A" };
+            },
+            fetchDeepDive: async function(item, explicitReason) {
+                const type = item.type === "Movie" ? "movie" : "tv";
+                try {
+                    const res = await fetch(`${BASE_URL}/${type}/${item.rawId}/recommendations?api_key=${TMDB_API_KEY}`);
+                    const data = await res.json();
+                    if (data.results) {
+                        const newRecs = data.results.slice(0, 15).map(rec => this.normalizeItem(rec, item.type, explicitReason)).filter(rec => rec.image);
+                        const existingIds = new Set(this.rawApiData.map(i => i.id));
+                        const newItems = newRecs.filter(i => !existingIds.has(i.id));
+                        this.rawApiData = [...this.rawApiData, ...newItems];
+                    }
+                } catch (err) {}
+            },
+            fetchBaselineContent: async function(page = 1) {
+                if (this.isLoading) return; this.isLoading = true;
+                try {
+                    const endpoints = [fetch(`${BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&page=${page}`), fetch(`${BASE_URL}/trending/tv/week?api_key=${TMDB_API_KEY}&page=${page}`)];
+                    const responses = await Promise.all(endpoints);
+                    const data = await Promise.all(responses.map(res => res.json()));
+                    const combinedData = [...data[0].results.map(item => this.normalizeItem(item, "Movie")), ...data[1].results.map(item => this.normalizeItem(item, "TV Show"))].filter(item => item.image && item.description.length > 20);
+                    const existingIds = new Set(this.rawApiData.map(i => i.id));
+                    const newItems = combinedData.filter(i => !existingIds.has(i.id));
+                    this.rawApiData = [...this.rawApiData, ...newItems];
+                } catch (err) {} finally { this.isLoading = false; }
+            },
+            updateAlgorithmLogic: function(skipRender = false) {
+                const unswiped = this.rawApiData.filter(item => !this.swipedIds.has(item.id));
+                const scoredData = unswiped.map(item => {
+                    let score = 0; let bestMatchReason = ""; let maxSubScore = 0; let genreScore = 0;
+                    item.genres.forEach(genre => {
+                        let baseWeight = this.genreWeights[genre] || 0; 
+                        if (['Action', 'Thriller', 'Horror', 'Crime'].includes(genre)) baseWeight += (this.vibes.intensity * 2);
+                        if (['Comedy', 'Family', 'Romance'].includes(genre)) baseWeight -= (this.vibes.intensity * 2);
+                        if (['Documentary', 'History', 'Reality'].includes(genre)) baseWeight += (this.vibes.realism * 2);
+                        if (['Sci-Fi', 'Fantasy', 'Animation'].includes(genre)) baseWeight -= (this.vibes.realism * 2);
+                        genreScore += baseWeight;
+                    });
+                    score += genreScore;
+                    
+                    let themeScore = 0; const itemThemes = this.extractThemes(item.description); let topTheme = ""; let topThemeVal = 0;
+                    itemThemes.forEach(t => {
+                        if (this.themeWeights[t]) {
+                            themeScore += this.themeWeights[t];
+                            if (this.themeWeights[t] > topThemeVal) { topThemeVal = this.themeWeights[t]; topTheme = t; }
+                        }
+                    });
+                    score += (themeScore * 0.8);
+                    
+                    const source = this.sourceMap[item.id] || "";
+                    if (source.includes("favorite cast/crew")) { score += 25; bestMatchReason = source; maxSubScore = 25; }
+                    if (source.includes("seed") || source.includes("manual")) { score += 15; if (15 > maxSubScore) { bestMatchReason = source; maxSubScore = 15; } }
+                    else if (source.includes("train")) { score += 10; if (10 > maxSubScore) { bestMatchReason = source; maxSubScore = 10; } }
+                    
+                    score += Math.random(); 
+                    if (!bestMatchReason) {
+                        if (themeScore > genreScore && topTheme && topThemeVal > 2) { bestMatchReason = `Shares plot themes like '${topTheme}'.`; }
+                        else if (item.genres.length > 0) {
+                            const topG = item.genres.reduce((a, b) => (this.genreWeights[a] || 0) > (this.genreWeights[b] || 0) ? a : b);
+                            if (this.genreWeights[topG] > 3) bestMatchReason = `Learned affinity for ${topG}.`;
+                            else bestMatchReason = `Generally trending globally.`;
+                        } else bestMatchReason = `Trending globally.`;
+                    }
+                    return { ...item, matchScore: score, matchReason: bestMatchReason };
+                });
+                scoredData.sort((a, b) => b.matchScore - a.matchScore);
+                this.scoredItems = scoredData;
+                if (!skipRender && ['foryou', 'movies', 'tvshows'].includes(this.phase)) { this.renderFeed(); }
+            },
+
+            // --- RENDER FEED & UTILS ---
+            renderFeed: function(append = false) {
+                if (!append) { this.els.feedGrid.innerHTML = ''; this.els.feedContainer.scrollTop = 0; }
+                let currentList = this.scoredItems;
+                if (this.phase === 'movies') currentList = currentList.filter(i => i.type === 'Movie');
+                if (this.phase === 'tvshows') currentList = currentList.filter(i => i.type === 'TV Show');
+                if (this.filters.genre) currentList = currentList.filter(i => i.genres.includes(this.filters.genre));
+                if (this.filters.minYear) currentList = currentList.filter(i => parseInt(i.year) >= parseInt(this.filters.minYear));
+                if (this.filters.minRating > 0) currentList = currentList.filter(i => parseFloat(i.rating) >= this.filters.minRating);
+                
+                if (currentList.length === 0) { this.els.feedEmpty.classList.remove('hidden'); this.els.feedGrid.classList.add('hidden'); return; }
+                this.els.feedEmpty.classList.add('hidden'); this.els.feedGrid.classList.remove('hidden');
+                
+                const startIndex = append ? this.els.feedGrid.children.length : 0;
+                const itemsToRender = currentList.slice(startIndex, this.visibleCount);
+                itemsToRender.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.setAttribute('data-id', item.id);
+                    div.className = "bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 flex flex-col group cursor-pointer hover:border-indigo-500 hover:shadow-[0_0_15px_rgba(79,70,229,0.2)] transition-all fade-in relative";
+                    if (!append) div.style.animationDelay = `${idx * 20}ms`;
+                    div.onclick = () => this.openDetails(item, 'feed');
+                    const isStrongMatch = item.matchReason.includes('seed') || item.matchReason.includes('train') || item.matchReason.includes('favorite');
+                    div.innerHTML = `
+                        ${isStrongMatch ? '<div class="absolute top-0 right-0 w-8 h-8 bg-indigo-500 rounded-bl-2xl z-10 flex items-center justify-center"><i class="ph-bold ph-brain text-white text-xs"></i></div>' : ''}
+                        <div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden">
+                            <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+                            <div class="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div>
+                        </div>
+                        <div class="p-3 flex-1 flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-bold text-sm leading-tight mb-1 line-clamp-1">${item.title}</h3>
+                                <p class="text-xs text-zinc-400 line-clamp-1">${item.matchReason.split(':')[0]}</p>
+                            </div>
+                        </div>
+                    `;
+                    this.els.feedGrid.appendChild(div);
+                });
+            },
+            refreshFeedOnly: function(itemId) {
+                const card = this.els.feedGrid.querySelector(`[data-id="${itemId}"]`);
+                if (card) { card.style.transition = 'all 0.3s ease'; card.classList.remove('opacity-100', 'scale-100'); card.classList.add('opacity-0', 'scale-90'); setTimeout(() => card.remove(), 300); }
+            },
+            loadMoreFeed: async function() {
+                if (this.isLoading) return;
+                this.els.infiniteLoader.classList.remove('hidden');
+                if (this.visibleCount + 20 >= this.scoredItems.length) {
+                    this.currentPage++; await this.fetchBaselineContent(this.currentPage); this.updateAlgorithmLogic(true); 
+                }
+                this.visibleCount += 20; this.renderFeed(true); 
+                this.els.infiniteLoader.classList.add('hidden');
+            },
+            renderMatches: function() {
+                if (this.liked.length === 0) { this.els.matchesEmpty.classList.remove('hidden'); this.els.matchesGrid.classList.add('hidden'); return; }
+                this.els.matchesEmpty.classList.add('hidden'); this.els.matchesGrid.classList.remove('hidden'); this.els.matchesGrid.innerHTML = '';
+                this.liked.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = "bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 flex flex-col group cursor-pointer hover:border-indigo-500 transition-colors shadow-lg fade-in";
+                    div.onclick = () => this.openDetails(item, 'matches');
+                    div.innerHTML = `<div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden"><img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" /><div class="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div></div><div class="p-3"><h3 class="font-bold text-sm leading-tight mb-1 line-clamp-1">${item.title}</h3><p class="text-xs text-zinc-400">${item.year} • ${item.type}</p></div>`;
+                    this.els.matchesGrid.appendChild(div);
+                });
+            },
+            updateBadge: function() {
+                if (this.liked.length > 0) { this.els.matchBadge.classList.remove('hidden'); this.els.matchBadge.textContent = this.liked.length; } 
+                else { this.els.matchBadge.classList.add('hidden'); }
+            },
+            showLoadingState: function(text) { this.els.loadingText.textContent = text; this.els.loadingState.classList.remove('hidden'); },
+            hideLoadingState: function() { this.els.loadingState.classList.add('hidden'); },
+            showLearningIndicator: function() { this.els.learningIndicator.classList.remove('hidden'); this.els.learningIndicator.classList.add('flex'); setTimeout(() => { this.els.learningIndicator.classList.add('hidden'); this.els.learningIndicator.classList.remove('flex'); }, 1500); },
+            resetProfile: function() {
+                if(confirm("Are you sure you want to wipe the AI's memory and start over?")) {
+                    localStorage.removeItem('bingeForYouState');
+                    this.genreWeights = {}; this.themeWeights = {}; this.crewWeights = {}; this.crewNames = {}; this.fetchedCrew = new Set(); this.sourceMap = {}; this.swipedIds = new Set(); this.liked = []; this.rawApiData = []; this.scoredItems = []; this.seedItems = [];
+                    this.updateBadge(); this.renderSeedVault(); this.setPhase('onboarding');
+                }
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
