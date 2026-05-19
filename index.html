@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,7 +9,7 @@
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        body { background-color: #09090b; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow: hidden; }
+        body { background-color: #09090b; color: white; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; overflow-x: hidden; }
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .pulse-border { animation: pulseBorder 2s infinite; }
@@ -25,7 +24,7 @@
     <header class="glass flex justify-between items-center p-4 border-b border-zinc-800 z-50 shrink-0">
         <div class="flex items-center gap-2 cursor-pointer" onclick="app.setPhase('foryou')">
             <i class="ph-fill ph-sparkle text-indigo-500 text-2xl"></i>
-            <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent hidden sm:block">
+            <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-500 bg-clip-text text-transparent hidden md:block">
                 Binge For You
             </h1>
         </div>
@@ -35,6 +34,9 @@
                 <i class="ph-bold ph-arrows-clockwise animate-spin"></i>
             </div>
             
+            <button onclick="app.toggleGridSize()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors shrink-0" title="Change Card Size">
+                <i class="ph-bold ph-squares-four text-lg"></i>
+            </button>
             <button onclick="app.openSearch()" class="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors shrink-0">
                 <i class="ph-bold ph-magnifying-glass text-lg"></i>
             </button>
@@ -73,8 +75,15 @@
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-bold text-zinc-300 mb-2"><i class="ph-bold ph-calendar mr-1"></i> Minimum Year</label>
-                <input type="number" id="filter-year" placeholder="e.g. 2010" class="w-full bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                <label class="block text-sm font-bold text-zinc-300 mb-2"><i class="ph-bold ph-calendar mr-1"></i> Year Range</label>
+                <div class="flex gap-2">
+                    <select id="filter-year-start" class="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                        <option value="">From Year</option>
+                    </select>
+                    <select id="filter-year-end" class="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl p-3 text-white focus:outline-none focus:border-indigo-500">
+                        <option value="">To Year</option>
+                    </select>
+                </div>
             </div>
             <div>
                 <label class="block text-sm font-bold text-zinc-300 mb-2"><i class="ph-fill ph-star text-amber-400 mr-1"></i> Minimum Rating: <span id="filter-rating-val">0</span></label>
@@ -119,6 +128,7 @@
         <button onclick="app.closeSettings()" class="absolute top-6 left-6 p-2 text-zinc-400 hover:text-white"><i class="ph-bold ph-x text-2xl"></i></button>
         <h2 class="text-3xl font-extrabold mb-8 text-white">Data & Learning</h2>
         <div class="w-full max-w-md space-y-4 bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+            <button onclick="app.retrainModel()" class="w-full py-3.5 bg-indigo-600 text-white hover:bg-indigo-500 rounded-xl font-bold flex items-center justify-center gap-2 border border-indigo-500/30 transition-colors mb-4"><i class="ph-bold ph-brain"></i> Retrain AI Model</button>
             <button onclick="app.simulateDecay()" class="w-full py-3.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-xl font-bold flex items-center justify-center gap-2 border border-indigo-500/30 transition-colors mb-4"><i class="ph-bold ph-hourglass-high"></i> Simulate 1 Month Decay</button>
             <button onclick="app.exportData()" class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold flex items-center justify-center gap-2 border border-zinc-700 transition-colors"><i class="ph-bold ph-download-simple"></i> Export Backup (JSON)</button>
             <label class="w-full py-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl font-bold flex items-center justify-center gap-2 border border-zinc-700 cursor-pointer transition-colors"><i class="ph-bold ph-upload-simple"></i> Restore Backup<input type="file" class="hidden" accept=".json" onchange="app.importData(event)"></label>
@@ -127,10 +137,11 @@
         </div>
     </div>
 
-    <div id="details-modal" class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[110] hidden flex-col justify-end p-4 fade-in">
+    <!-- ITEM DETAILS MODAL -->
+    <div id="details-modal" class="fixed inset-0 bg-zinc-950/80 backdrop-blur-sm z-[110] hidden flex-col justify-end p-4 md:p-10 fade-in items-center">
         <div class="absolute inset-0 z-0" onclick="app.closeDetails()"></div>
-        <div class="bg-zinc-900 border border-zinc-700 rounded-[2rem] w-full max-w-md mx-auto z-10 overflow-hidden modal-enter flex flex-col max-h-[85vh]">
-            <div class="relative h-48 w-full bg-zinc-800 shrink-0">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-[2rem] w-full max-w-lg z-10 overflow-hidden modal-enter flex flex-col max-h-[85vh] relative">
+            <div class="relative h-48 sm:h-56 w-full bg-zinc-800 shrink-0">
                 <img id="details-img" src="" class="w-full h-full object-cover opacity-60">
                 <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 to-transparent"></div>
                 <button onclick="app.closeDetails()" class="absolute top-4 right-4 w-8 h-8 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white"><i class="ph-bold ph-x"></i></button>
@@ -148,18 +159,27 @@
                         <p id="details-reason" class="text-sm text-zinc-200 leading-tight font-medium">Reason</p>
                     </div>
                 </div>
+                
                 <div id="details-genres" class="flex flex-wrap gap-1.5 mb-4"></div>
+                <div id="details-credits" class="text-sm text-zinc-300 mb-4 bg-zinc-800/50 p-3 rounded-xl border border-zinc-700/50 empty:hidden"></div>
                 <p id="details-desc" class="text-zinc-400 text-sm leading-relaxed mb-6">Desc</p>
             </div>
 
-            <div class="p-4 bg-zinc-900 border-t border-zinc-800 flex gap-3 shrink-0">
-                <button id="details-like-btn" class="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors"><i class="ph-bold ph-plus"></i> Add to List</button>
-                <button id="details-train-btn" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-500 transition-colors"><i class="ph-bold ph-brain"></i> Train AI</button>
+            <div class="p-4 bg-zinc-900 border-t border-zinc-800 flex flex-wrap sm:flex-nowrap gap-3 shrink-0">
+                <button id="details-watchlater-btn" class="flex-1 py-3 bg-zinc-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-700 transition-colors">
+                    <i class="ph-bold ph-clock"></i> Watch Later
+                </button>
+                <button id="details-watched-btn" class="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-500 transition-colors">
+                    <i class="ph-bold ph-check-circle"></i> Watched & Train
+                </button>
+                <button id="details-remove-btn" class="flex-1 py-3 bg-red-500/10 text-red-400 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-500/20 transition-colors hidden">
+                    <i class="ph-bold ph-trash"></i> Remove
+                </button>
             </div>
         </div>
     </div>
 
-    <main class="flex-1 relative overflow-hidden flex flex-col items-center w-full">
+    <main class="flex-1 relative overflow-y-auto overflow-x-hidden flex flex-col items-center w-full">
         
         <div id="phase-onboarding" class="w-full max-w-2xl h-full flex flex-col px-6 py-8 overflow-y-auto hide-scrollbar fade-in hidden">
             <div class="text-center mb-8 shrink-0 mt-2">
@@ -189,7 +209,7 @@
             <p id="loading-text" class="text-zinc-400 text-sm h-12">Analyzing data arrays...</p>
         </div>
 
-        <div id="feed-container" class="w-full h-full max-w-5xl overflow-y-auto hide-scrollbar p-4 pb-20 hidden relative">
+        <div id="feed-container" class="w-full h-full max-w-[1400px] overflow-y-auto hide-scrollbar p-4 pb-20 hidden relative">
             <div class="flex justify-between items-end mb-6">
                 <div>
                     <h2 id="feed-title" class="text-2xl font-bold">Recommended For You</h2>
@@ -210,13 +230,20 @@
             </div>
         </div>
 
-        <div id="phase-explore" class="w-full h-full max-w-5xl overflow-y-auto hide-scrollbar p-4 pb-20 hidden relative">
+        <div id="phase-explore" class="w-full h-full max-w-[1400px] overflow-y-auto hide-scrollbar p-4 pb-20 hidden relative">
             <div class="mb-6">
                 <h2 class="text-2xl font-bold mb-4">Explore Global Charts</h2>
-                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2 mb-4">
                     <button onclick="app.loadExplore('trending_day')" id="exp-trending_day" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-100 text-black">Trending Today</button>
                     <button onclick="app.loadExplore('trending_week')" id="exp-trending_week" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Trending Week</button>
+                    <button onclick="app.loadExplore('popular_month')" id="exp-popular_month" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Popular This Month</button>
                     <button onclick="app.loadExplore('popular_year')" id="exp-popular_year" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Popular This Year</button>
+                </div>
+                <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                    <button onclick="app.loadExplore('top_rated_today')" id="exp-top_rated_today" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Top Rated Today</button>
+                    <button onclick="app.loadExplore('top_rated_week')" id="exp-top_rated_week" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Top Rated Week</button>
+                    <button onclick="app.loadExplore('top_rated_month')" id="exp-top_rated_month" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Top Rated This Month</button>
+                    <button onclick="app.loadExplore('top_rated_year')" id="exp-top_rated_year" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Top Rated This Year</button>
                     <button onclick="app.loadExplore('top_rated')" id="exp-top_rated" class="px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white">All-Time Greats</button>
                 </div>
             </div>
@@ -224,21 +251,25 @@
             <div id="explore-loader" class="w-full py-20 flex justify-center hidden">
                 <i class="ph ph-spinner-gap animate-spin text-4xl text-indigo-500"></i>
             </div>
-
             <div id="explore-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"></div>
         </div>
 
-        <div id="phase-matches" class="w-full h-full max-w-5xl overflow-y-auto hide-scrollbar p-4 pb-20 hidden">
-            <div class="flex justify-between items-end mb-6">
-                <div><h2 class="text-2xl font-bold">Your Watchlist</h2></div>
+        <div id="phase-matches" class="w-full h-full max-w-[1400px] overflow-y-auto hide-scrollbar p-4 pb-20 hidden">
+            <div class="flex justify-between items-end mb-6 flex-wrap gap-4">
+                <div>
+                    <h2 class="text-2xl font-bold mb-2">Your Lists</h2>
+                    <div class="flex gap-2">
+                        <button onclick="app.setListTab('watchLater')" id="tab-watchlater" class="px-4 py-1.5 rounded-full text-sm font-bold transition-colors bg-zinc-100 text-black">Watch Later</button>
+                        <button onclick="app.setListTab('watched')" id="tab-watched" class="px-4 py-1.5 rounded-full text-sm font-bold transition-colors bg-zinc-800 text-zinc-300 hover:text-white">Watched (Trained)</button>
+                    </div>
+                </div>
             </div>
             <div id="matches-empty" class="text-center p-12 bg-zinc-900/50 rounded-3xl border border-zinc-800 border-dashed mt-10">
                 <i class="ph-fill ph-bookmark-simple text-5xl text-zinc-700 mx-auto mb-4 block"></i>
-                <p class="text-zinc-400 text-lg">Watchlist is empty.</p>
+                <p class="text-zinc-400 text-lg">List is empty.</p>
             </div>
             <div id="matches-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 hidden"></div>
         </div>
-
     </main>
 
     <script>
@@ -255,21 +286,71 @@
         const ALL_GENRES = Array.from(new Set(Object.values(GENRE_MAP))).sort();
         const STOP_WORDS = new Set(["the","and","in","on","for","with","about","story","series","movie","film"]);
 
+        const LocalAI = {
+            calculateTFIDF: function(documents, terms) {
+                const tf = {}; const idf = {}; const totalDocs = documents.length;
+                terms.forEach(term => { let docCount = 0; documents.forEach(doc => { if (doc.includes(term)) docCount++; }); idf[term] = Math.log(totalDocs / (1 + docCount)); });
+                documents.forEach((doc, idx) => {
+                    tf[idx] = {}; const words = doc.split(/\s+/); const wordCount = words.length;
+                    terms.forEach(term => { const count = words.filter(w => w === term).length; tf[idx][term] = count / wordCount; });
+                });
+                return { tf, idf };
+            },
+            cosineSimilarity: function(vecA, vecB) {
+                const keys = new Set([...Object.keys(vecA), ...Object.keys(vecB)]);
+                let dotProduct = 0, normA = 0, normB = 0;
+                keys.forEach(key => { const valA = vecA[key] || 0; const valB = vecB[key] || 0; dotProduct += valA * valB; normA += valA * valA; normB += valB * valB; });
+                if (normA === 0 || normB === 0) return 0;
+                return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+            },
+            contentBasedScore: function(item, userProfile) {
+                let score = 0;
+                const genreVector = {}; ALL_GENRES.forEach(g => genreVector[g] = 0); item.genres.forEach(g => genreVector[g] = 1);
+                const userGenreVector = {}; ALL_GENRES.forEach(g => userGenreVector[g] = userProfile.genreWeights[g] || 0);
+                score += this.cosineSimilarity(genreVector, userGenreVector) * 10;
+                
+                const itemThemes = app.extractThemes(item.description); const themeVector = {}; itemThemes.forEach(t => themeVector[t] = 1);
+                const userThemeVector = {}; Object.keys(userProfile.themeWeights).forEach(t => userThemeVector[t] = userProfile.themeWeights[t]);
+                score += this.cosineSimilarity(themeVector, userThemeVector) * 5;
+                return score;
+            },
+            adaptiveLearningRate: function(interactionCount) {
+                return Math.max(0.1, 1.0 / (1 + Math.log(1 + interactionCount)));
+            },
+            confidenceScore: function(item, userProfile) {
+                const interactionCount = Object.values(userProfile.genreWeights).reduce((a, b) => a + Math.abs(b), 0);
+                const confidence = Math.min(1, interactionCount / 50);
+                return confidence * this.contentBasedScore(item, userProfile);
+            }
+        };
+
         const app = {
             phase: 'onboarding',
             seedItems: [], 
-            
             genreWeights: {}, themeWeights: {}, crewWeights: {}, crewNames: {},
             fetchedCrew: new Set(), sourceMap: {}, lastDecayDate: Date.now(),
             
-            swipedIds: new Set(), liked: [], 
-            rawApiData: [], scoredItems: [], 
-            
-            exploreData: [], currentExploreType: 'trending_day',
-            filters: { genre: '', minYear: '', minRating: 0 },
-            vibes: { intensity: 0, realism: 0 },
+            // Replaced 'liked' with two distinct lists
+            swipedIds: new Set(), 
+            watchLater: [], 
+            watched: [], 
 
-            visibleCount: 20, currentPage: 1, isLoading: false, searchTimer: null, activeDetailsItem: null, els: {},
+            rawApiData: [], scoredItems: [], 
+            exploreData: [], currentExploreType: 'trending_day',
+            filters: { genre: '', yearStart: '', yearEnd: '', minRating: 0 },
+            vibes: { intensity: 0, realism: 0 },
+            interactionHistory: [], modelVersion: 1,
+            gridSize: 'normal',
+            listTab: 'watchLater',
+
+            renderedIds: new Set(), 
+            visibleCount: 20, 
+            currentPage: 1, 
+            isLoading: false, 
+            isLoadingMore: false,
+            searchTimer: null, 
+            activeDetailsItem: null, 
+            els: {},
 
             init: function() {
                 this.els = {
@@ -291,28 +372,39 @@
                     loadingState: document.getElementById('loading-state'), loadingText: document.getElementById('loading-text'),
                     feedTitle: document.getElementById('feed-title'), feedSubtitle: document.getElementById('feed-subtitle'), feedGrid: document.getElementById('feed-grid'), feedEmpty: document.getElementById('feed-empty'),
                     scrollSentinel: document.getElementById('scroll-sentinel'), infiniteLoader: document.getElementById('infinite-loader'),
+                    
                     matchesEmpty: document.getElementById('matches-empty'), matchesGrid: document.getElementById('matches-grid'),
+                    tabWatchLater: document.getElementById('tab-watchlater'), tabWatched: document.getElementById('tab-watched'),
+                    
                     exploreLoader: document.getElementById('explore-loader'), exploreGrid: document.getElementById('explore-grid'),
                     
                     searchModal: document.getElementById('search-modal'), searchInput: document.getElementById('search-input'), searchResults: document.getElementById('search-results'),
                     vibesModal: document.getElementById('vibes-modal'), vIntensity: document.getElementById('vibe-intensity'), vRealism: document.getElementById('vibe-realism'),
                     settingsModal: document.getElementById('settings-modal'),
-                    filtersModal: document.getElementById('filters-modal'), fGenre: document.getElementById('filter-genre'), fYear: document.getElementById('filter-year'), fRating: document.getElementById('filter-rating'), fRatingVal: document.getElementById('filter-rating-val'),
+                    filtersModal: document.getElementById('filters-modal'), fGenre: document.getElementById('filter-genre'), fYearStart: document.getElementById('filter-year-start'), fYearEnd: document.getElementById('filter-year-end'), fRating: document.getElementById('filter-rating'), fRatingVal: document.getElementById('filter-rating-val'),
                     
-                    detailsModal: document.getElementById('details-modal'), dImg: document.getElementById('details-img'), dTitle: document.getElementById('details-title'), dYear: document.getElementById('details-year'), dType: document.getElementById('details-type'), dRating: document.getElementById('details-rating'), dReason: document.getElementById('details-reason'), dGenres: document.getElementById('details-genres'), dDesc: document.getElementById('details-desc'), dLikeBtn: document.getElementById('details-like-btn'), dTrainBtn: document.getElementById('details-train-btn'), dInsightBox: document.getElementById('details-insight-box'), dInsightLabel: document.getElementById('details-insight-label')
+                    detailsModal: document.getElementById('details-modal'), dImg: document.getElementById('details-img'), dTitle: document.getElementById('details-title'), dYear: document.getElementById('details-year'), dType: document.getElementById('details-type'), dRating: document.getElementById('details-rating'), dReason: document.getElementById('details-reason'), dGenres: document.getElementById('details-genres'), dDesc: document.getElementById('details-desc'), 
+                    dWatchLaterBtn: document.getElementById('details-watchlater-btn'), dWatchedBtn: document.getElementById('details-watched-btn'), dRemoveBtn: document.getElementById('details-remove-btn'), 
+                    dInsightBox: document.getElementById('details-insight-box'), dInsightLabel: document.getElementById('details-insight-label'), dCredits: document.getElementById('details-credits')
                 };
 
-                // Populate Genre Filter Dropdown
                 ALL_GENRES.forEach(g => {
-                    const opt = document.createElement('option');
-                    opt.value = g; opt.textContent = g;
+                    const opt = document.createElement('option'); opt.value = g; opt.textContent = g;
                     this.els.fGenre.appendChild(opt);
                 });
+
+                const currentYear = new Date().getFullYear();
+                for (let year = currentYear; year >= 1900; year--) {
+                    const optStart = document.createElement('option'); optStart.value = year; optStart.textContent = year;
+                    this.els.fYearStart.appendChild(optStart);
+                    const optEnd = document.createElement('option'); optEnd.value = year; optEnd.textContent = year;
+                    this.els.fYearEnd.appendChild(optEnd);
+                }
 
                 this.els.searchInput.addEventListener('input', (e) => this.handleSearchInput(e));
                 
                 const observer = new IntersectionObserver((entries) => {
-                    if (entries[0].isIntersecting && !this.isLoading && ['foryou', 'movies', 'tvshows'].includes(this.phase)) {
+                    if (entries[0].isIntersecting && !this.isLoadingMore && ['foryou', 'movies', 'tvshows'].includes(this.phase)) {
                         this.loadMoreFeed();
                     }
                 }, { root: this.els.feedContainer, rootMargin: '300px' });
@@ -322,7 +414,38 @@
                     ALL_GENRES.forEach(g => this.genreWeights[g] = 0);
                     this.setPhase('onboarding');
                     this.renderSeedVault();
+                } else {
+                    this.applyGridSize();
+                    if (this.seedItems.length > 0 && this.phase !== 'onboarding') {
+                        this.injectFreshContent();
+                    }
                 }
+            },
+
+            // --- GRID SIZING ---
+            toggleGridSize: function() {
+                const sizes = ['xs', 'small', 'normal', 'large', 'xl'];
+                let idx = sizes.indexOf(this.gridSize);
+                if (idx === -1) idx = 2; 
+                this.gridSize = sizes[(idx + 1) % sizes.length];
+                this.applyGridSize();
+                this.saveState();
+            },
+            applyGridSize: function() {
+                const grids = [this.els.feedGrid, this.els.exploreGrid, this.els.matchesGrid];
+                let baseClasses = "";
+                if (this.gridSize === 'xs') baseClasses = "grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-2";
+                else if (this.gridSize === 'small') baseClasses = "grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3";
+                else if (this.gridSize === 'large') baseClasses = "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6";
+                else if (this.gridSize === 'xl') baseClasses = "grid grid-cols-1 md:grid-cols-2 gap-8 lg:w-3/4 mx-auto";
+                else baseClasses = "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"; // normal
+
+                grids.forEach(g => {
+                    if(g) {
+                        const isHidden = g.classList.contains('hidden');
+                        g.className = baseClasses + (isHidden ? ' hidden' : '');
+                    }
+                });
             },
 
             // --- FILTERS ---
@@ -330,19 +453,22 @@
             closeFilters: function() { this.els.filtersModal.classList.add('hidden'); this.els.filtersModal.classList.remove('flex'); },
             applyFilters: function() {
                 this.filters.genre = this.els.fGenre.value;
-                this.filters.minYear = this.els.fYear.value;
+                this.filters.yearStart = this.els.fYearStart.value;
+                this.filters.yearEnd = this.els.fYearEnd.value;
                 this.filters.minRating = parseFloat(this.els.fRating.value);
-                const activeCount = (this.filters.genre ? 1 : 0) + (this.filters.minYear ? 1 : 0) + (this.filters.minRating > 0 ? 1 : 0);
+                const activeCount = (this.filters.genre ? 1 : 0) + (this.filters.yearStart || this.filters.yearEnd ? 1 : 0) + (this.filters.minRating > 0 ? 1 : 0);
                 if(activeCount > 0) this.els.feedSubtitle.innerHTML = `<span class="text-indigo-400 font-bold">${activeCount} Filters Active.</span> Scroll to discover.`;
                 else this.els.feedSubtitle.textContent = "Scroll to discover. Tap to train.";
-                this.closeFilters(); this.visibleCount = 20; this.renderFeed();
+                this.closeFilters(); 
+                this.visibleCount = 20; 
+                this.renderFeed();
             },
-            resetFilters: function() { this.els.fGenre.value = ""; this.els.fYear.value = ""; this.els.fRating.value = 0; this.els.fRatingVal.textContent = "0"; this.applyFilters(); },
+            resetFilters: function() { this.els.fGenre.value = ""; this.els.fYearStart.value = ""; this.els.fYearEnd.value = ""; this.els.fRating.value = 0; this.els.fRatingVal.textContent = "0"; this.applyFilters(); },
 
             // --- VIBES MODAL ---
             openVibes: function() { this.els.vibesModal.classList.remove('hidden'); this.els.vibesModal.classList.add('flex'); },
             closeVibes: function() { this.els.vibesModal.classList.add('hidden'); this.els.vibesModal.classList.remove('flex'); },
-            updateVibes: function() { this.vibes.intensity = parseInt(this.els.vIntensity.value); this.vibes.realism = parseInt(this.els.vRealism.value); this.updateAlgorithmLogic(); },
+            updateVibes: function() { this.vibes.intensity = parseInt(this.els.vIntensity.value); this.vibes.realism = parseInt(this.els.vRealism.value); this.updateAlgorithmLogic(true); this.renderFeed(); },
             resetVibes: function() { this.els.vIntensity.value = 0; this.els.vRealism.value = 0; this.updateVibes(); },
 
             // --- SETTINGS MODAL ---
@@ -352,18 +478,11 @@
             // --- SAVE/LOAD & DECAY ---
             saveState: function() {
                 const data = {
-                    seedItems: this.seedItems,
-                    genreWeights: this.genreWeights,
-                    themeWeights: this.themeWeights,
-                    crewWeights: this.crewWeights,
-                    crewNames: this.crewNames,
-                    fetchedCrew: Array.from(this.fetchedCrew),
-                    sourceMap: this.sourceMap,
-                    swipedIds: Array.from(this.swipedIds),
-                    liked: this.liked,
-                    rawApiData: this.rawApiData,
-                    lastDecayDate: this.lastDecayDate,
-                    phase: this.phase === 'onboarding' ? 'onboarding' : 'foryou' 
+                    seedItems: this.seedItems, genreWeights: this.genreWeights, themeWeights: this.themeWeights, crewWeights: this.crewWeights,
+                    crewNames: this.crewNames, fetchedCrew: Array.from(this.fetchedCrew), sourceMap: this.sourceMap, swipedIds: Array.from(this.swipedIds),
+                    watchLater: this.watchLater, watched: this.watched, // New Lists
+                    rawApiData: this.rawApiData, lastDecayDate: this.lastDecayDate, interactionHistory: this.interactionHistory,
+                    modelVersion: this.modelVersion, gridSize: this.gridSize, phase: this.phase === 'onboarding' ? 'onboarding' : 'foryou' 
                 };
                 localStorage.setItem('bingeForYouState', JSON.stringify(data));
             },
@@ -372,18 +491,16 @@
                 if (saved) {
                     try {
                         const data = JSON.parse(saved);
-                        this.seedItems = data.seedItems || [];
-                        this.genreWeights = data.genreWeights || {};
-                        this.themeWeights = data.themeWeights || {};
-                        this.crewWeights = data.crewWeights || {};
-                        this.crewNames = data.crewNames || {};
-                        this.fetchedCrew = new Set(data.fetchedCrew || []);
-                        this.sourceMap = data.sourceMap || {};
-                        this.swipedIds = new Set(data.swipedIds || []);
-                        this.liked = data.liked || [];
-                        this.rawApiData = data.rawApiData || [];
-                        this.lastDecayDate = data.lastDecayDate || Date.now();
+                        this.seedItems = data.seedItems || []; this.genreWeights = data.genreWeights || {}; this.themeWeights = data.themeWeights || {}; this.crewWeights = data.crewWeights || {};
+                        this.crewNames = data.crewNames || {}; this.fetchedCrew = new Set(data.fetchedCrew || []); this.sourceMap = data.sourceMap || {}; this.swipedIds = new Set(data.swipedIds || []);
                         
+                        // Migrate legacy 'liked' array if exists
+                        this.watched = data.watched || data.liked || []; 
+                        this.watchLater = data.watchLater || [];
+                        
+                        this.rawApiData = data.rawApiData || []; this.lastDecayDate = data.lastDecayDate || Date.now();
+                        this.interactionHistory = data.interactionHistory || []; this.modelVersion = data.modelVersion || 1;
+                        this.gridSize = data.gridSize || 'normal';
                         this.updateBadge();
                         this.processNaturalDecay(); 
 
@@ -395,9 +512,7 @@
                             this.renderSeedVault();
                         }
                         return true;
-                    } catch (e) {
-                        return false;
-                    }
+                    } catch (e) { return false; }
                 }
                 return false;
             },
@@ -413,44 +528,77 @@
                 }
             },
             simulateDecay: function() {
-                this.applyDecayFactor(0.95);
-                this.lastDecayDate = Date.now();
-                this.saveState();
-                this.updateAlgorithmLogic(); 
-                this.closeSettings();
-                this.showLearningIndicator();
-                setTimeout(() => alert("Algorithm updated: Older preferences decayed by 5%."), 500);
+                this.applyDecayFactor(0.95); this.lastDecayDate = Date.now(); this.saveState(); this.updateAlgorithmLogic(true); this.renderFeed(); this.closeSettings();
+                this.showLearningIndicator(); setTimeout(() => alert("Algorithm updated: Older preferences decayed by 5%."), 500);
             },
             applyDecayFactor: function(factor) {
                 Object.keys(this.genreWeights).forEach(k => this.genreWeights[k] *= factor);
                 Object.keys(this.themeWeights).forEach(k => this.themeWeights[k] *= factor);
                 Object.keys(this.crewWeights).forEach(k => this.crewWeights[k] *= factor);
             },
+            
+            injectFreshContent: async function() {
+                if (this.isLoading) return; 
+                this.isLoading = true;
+                try {
+                    const rPage = Math.floor(Math.random() * 15) + 1;
+                    const endpoints = [
+                        fetch(`${BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&page=${rPage}`), 
+                        fetch(`${BASE_URL}/trending/tv/week?api_key=${TMDB_API_KEY}&page=${rPage}`)
+                    ];
+                    const responses = await Promise.all(endpoints);
+                    const data = await Promise.all(responses.map(res => res.json()));
+                    
+                    const combinedData = [
+                        ...data[0].results.map(item => this.normalizeItem(item, "Movie")), 
+                        ...data[1].results.map(item => this.normalizeItem(item, "TV Show"))
+                    ].filter(item => item.image && item.description.length > 20);
+                    
+                    const existingIds = new Set(this.rawApiData.map(i => i.id));
+                    const newItems = combinedData.filter(i => !existingIds.has(i.id));
+                    this.rawApiData.push(...newItems);
+                    
+                    this.updateAlgorithmLogic(false);
+                } catch (err) {
+                    console.error("Failed to inject fresh content", err);
+                } finally { 
+                    this.isLoading = false; 
+                }
+            },
+
+            retrainModel: function() {
+                this.showLoadingState("Retraining AI model with all interactions...");
+                this.modelVersion++;
+                ALL_GENRES.forEach(g => this.genreWeights[g] = 0); this.themeWeights = {}; this.crewWeights = {}; this.crewNames = {}; this.fetchedCrew = new Set(); this.sourceMap = {};
+                const learningRate = LocalAI.adaptiveLearningRate(this.interactionHistory.length);
+                this.interactionHistory.forEach(interaction => {
+                    if (interaction.type === 'watched') {
+                        interaction.item.genres.forEach(g => { this.genreWeights[g] = (this.genreWeights[g] || 0) + (4 * learningRate); });
+                        const themes = this.extractThemes(interaction.item.description);
+                        themes.forEach(t => { this.themeWeights[t] = (this.themeWeights[t] || 0) + (1.5 * learningRate); });
+                    }
+                });
+                this.seedItems.forEach(seed => {
+                    seed.genres.forEach(g => { this.genreWeights[g] = (this.genreWeights[g] || 0) + 6; });
+                    const themes = this.extractThemes(seed.description);
+                    themes.forEach(t => { this.themeWeights[t] = (this.themeWeights[t] || 0) + 3; });
+                });
+                setTimeout(async () => {
+                    await this.fetchBaselineContent(1); await this.fetchBaselineContent(2);
+                    this.updateAlgorithmLogic(false); this.saveState(); this.hideLoadingState(); this.setPhase('foryou');
+                }, 1000);
+            },
             exportData: function() {
                 const dataStr = localStorage.getItem('bingeForYouState');
                 if(!dataStr) { alert('No data to export yet.'); return; }
                 const blob = new Blob([dataStr], {type: "application/json"});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `BingeForYou_Backup_${new Date().toISOString().slice(0,10)}.json`;
-                a.click();
-                URL.revokeObjectURL(url);
+                const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `BingeForYou_Backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
             },
             importData: function(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
+                const file = event.target.files[0]; if (!file) return; const reader = new FileReader();
                 reader.onload = (e) => {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data.genreWeights) {
-                            localStorage.setItem('bingeForYouState', JSON.stringify(data));
-                            window.location.reload(); 
-                        } else { alert("Invalid backup file."); }
-                    } catch(err) { alert("Invalid backup file."); }
-                };
-                reader.readAsText(file);
+                    try { const data = JSON.parse(e.target.result); if (data.genreWeights) { localStorage.setItem('bingeForYouState', JSON.stringify(data)); window.location.reload(); } else { alert("Invalid backup file."); } } catch(err) { alert("Invalid backup file."); }
+                }; reader.readAsText(file);
             },
 
             // --- NAVIGATION ---
@@ -494,29 +642,46 @@
                 }
             },
 
+            setListTab: function(tabName) {
+                this.listTab = tabName;
+                if(tabName === 'watchLater') {
+                    this.els.tabWatchLater.className = "px-4 py-1.5 rounded-full text-sm font-bold transition-colors bg-zinc-100 text-black shadow-md";
+                    this.els.tabWatched.className = "px-4 py-1.5 rounded-full text-sm font-bold transition-colors bg-zinc-800 text-zinc-300 hover:text-white";
+                } else {
+                    this.els.tabWatched.className = "px-4 py-1.5 rounded-full text-sm font-bold transition-colors bg-zinc-100 text-black shadow-md";
+                    this.els.tabWatchLater.className = "px-4 py-1.5 rounded-full text-sm font-bold transition-colors bg-zinc-800 text-zinc-300 hover:text-white";
+                }
+                this.renderMatches();
+            },
+
             // --- EXPLORE ---
             loadExplore: async function(type) {
                 this.currentExploreType = type;
-                ['trending_day', 'trending_week', 'popular_year', 'top_rated'].forEach(t => {
+                const exploreTypes = ['trending_day', 'trending_week', 'popular_month', 'popular_year', 'top_rated_today', 'top_rated_week', 'top_rated_month', 'top_rated_year', 'top_rated'];
+                exploreTypes.forEach(t => {
                     const btn = document.getElementById(`exp-${t}`);
                     if(t === type) btn.className = "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-100 text-black shadow-md";
                     else btn.className = "px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors bg-zinc-800 text-zinc-300 hover:text-white";
                 });
-
                 this.els.exploreGrid.innerHTML = '';
                 this.els.exploreLoader.classList.remove('hidden');
 
                 try {
                     let urls = [];
+                    const now = new Date();
+                    const todayStr = now.toISOString().split('T')[0];
+                    const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                    const currentYear = now.getFullYear();
+                    
                     if(type === 'trending_day') urls = [`${BASE_URL}/trending/all/day?api_key=${TMDB_API_KEY}`];
                     else if(type === 'trending_week') urls = [`${BASE_URL}/trending/all/week?api_key=${TMDB_API_KEY}`];
-                    else if(type === 'popular_year') {
-                        const year = new Date().getFullYear();
-                        urls = [
-                            `${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&primary_release_year=${year}`,
-                            `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&first_air_date_year=${year}`
-                        ];
-                    }
+                    else if(type === 'popular_month') urls = [`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&primary_release_date.gte=${monthAgo}`, `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&first_air_date.gte=${monthAgo}`];
+                    else if(type === 'popular_year') urls = [`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&primary_release_year=${currentYear}`, `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&first_air_date_year=${currentYear}`];
+                    else if(type === 'top_rated_today') urls = [`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.0&vote_count.gte=5&primary_release_date.gte=${todayStr}`, `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.0&vote_count.gte=5&first_air_date.gte=${todayStr}`];
+                    else if(type === 'top_rated_week') urls = [`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.5&vote_count.gte=10&primary_release_date.gte=${weekAgo}`, `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.5&vote_count.gte=10&first_air_date.gte=${weekAgo}`];
+                    else if(type === 'top_rated_month') urls = [`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.5&vote_count.gte=30&primary_release_date.gte=${monthAgo}`, `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.5&vote_count.gte=30&first_air_date.gte=${monthAgo}`];
+                    else if(type === 'top_rated_year') urls = [`${BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.5&vote_count.gte=100&primary_release_year=${currentYear}`, `${BASE_URL}/discover/tv?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.5&vote_count.gte=100&first_air_date_year=${currentYear}`];
                     else if(type === 'top_rated') urls = [`${BASE_URL}/movie/top_rated?api_key=${TMDB_API_KEY}`, `${BASE_URL}/tv/top_rated?api_key=${TMDB_API_KEY}`];
 
                     const responses = await Promise.all(urls.map(url => fetch(url)));
@@ -525,14 +690,21 @@
                     let results = [];
                     data.forEach(d => results.push(...d.results));
                     
-                    if(type === 'top_rated') results.sort((a,b) => b.vote_average - a.vote_average);
-                    else results.sort((a,b) => b.popularity - a.popularity);
+                    const uniqueMap = new Map();
+                    results.forEach(i => {
+                        const detectedType = (i.media_type === 'tv' || i.name || i.first_air_date) ? 'TV Show' : 'Movie';
+                        const norm = this.normalizeItem(i, detectedType, "Global Chart Pick");
+                        if (norm.image && !uniqueMap.has(norm.id)) uniqueMap.set(norm.id, norm);
+                    });
+                    
+                    let uniqueResults = Array.from(uniqueMap.values());
+                    if(type.startsWith('top_rated')) uniqueResults.sort((a,b) => parseFloat(b.rating) - parseFloat(a.rating));
+                    else uniqueResults.sort((a,b) => b.popularity - a.popularity);
 
-                    this.exploreData = results.map(i => this.normalizeItem(i, i.title ? 'Movie' : 'TV Show', "Global Chart Pick")).filter(i => i.image);
+                    this.exploreData = uniqueResults;
                     this.renderExplore();
                 } catch(e) { console.error("Explore fetch failed", e); } finally { this.els.exploreLoader.classList.add('hidden'); }
             },
-
             renderExplore: function() {
                 this.els.exploreGrid.innerHTML = '';
                 this.exploreData.forEach((item, idx) => {
@@ -543,6 +715,9 @@
                     div.innerHTML = `
                         <div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden">
                             <img src="${item.image}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+                            <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/10 flex items-center gap-1">
+                                <i class="${item.type === 'Movie' ? 'ph-fill ph-film-strip' : 'ph-fill ph-television'}"></i> ${item.type === 'Movie' ? 'Movie' : 'TV'}
+                            </div>
                             <div class="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div>
                         </div>
                         <div class="p-3">
@@ -610,21 +785,20 @@
                 });
             },
             selectSearchResult: async function(rawItem) {
-                const type = rawItem.media_type === 'tv' ? 'TV Show' : 'Movie';
-                const item = this.normalizeItem(rawItem, type);
+                const detectedType = (rawItem.media_type === 'tv' || rawItem.name || rawItem.first_air_date) ? 'TV Show' : 'Movie';
+                const item = this.normalizeItem(rawItem, detectedType);
                 if (this.phase === 'onboarding') {
                     this.seedItems.push(item); this.renderSeedVault(); this.saveState(); this.closeSearch();
                 } else {
-                    this.closeSearch(); this.showLearningIndicator();
-                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
-                    await this.trainAlgorithm(item, `Explicitly searched for ${item.title}`);
+                    this.closeSearch(); 
+                    this.openDetails(item, 'search'); // Let user choose Watch Later vs Watched
                 }
             },
             completeOnboarding: async function() {
                 this.showLoadingState("Analyzing creative DNA of your seeds...");
                 try {
                     this.els.loadingText.textContent = "Mapping behavioral networks & themes...";
-                    const fetchPromises = this.seedItems.map(seed => this.trainAlgorithm(seed, `Learned from your seed: ${seed.title}`));
+                    const fetchPromises = this.seedItems.map(seed => this.markWatchedAndTrain(seed, `Learned from your seed: ${seed.title}`, true));
                     fetchPromises.push(this.fetchBaselineContent(1)); 
                     fetchPromises.push(this.fetchBaselineContent(2)); 
                     await Promise.all(fetchPromises);
@@ -635,50 +809,152 @@
                 } catch (error) { this.hideLoadingState(); alert("Error during training phase."); }
             },
 
-            // --- DETAILS ---
+            // --- DETAILS & UNTRAINING ---
             openDetails: function(item, sourceTab) {
                 this.activeDetailsItem = item;
                 this.els.dImg.src = item.image; this.els.dTitle.textContent = item.title; this.els.dYear.textContent = item.year; this.els.dType.textContent = item.type; this.els.dRating.textContent = item.rating; this.els.dDesc.textContent = item.description;
                 this.els.dGenres.innerHTML = '';
+                this.els.dCredits.innerHTML = '';
+                
                 item.genres.forEach(g => {
                     const span = document.createElement('span'); span.className = "px-2 py-1 bg-zinc-800 text-zinc-300 text-[10px] font-bold rounded-md border border-zinc-700"; span.textContent = g;
                     this.els.dGenres.appendChild(span);
                 });
+
+                fetch(`${BASE_URL}/${item.type === 'Movie' ? 'movie' : 'tv'}/${item.rawId}/credits?api_key=${TMDB_API_KEY}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let crewText = "";
+                        if(data.crew) {
+                            const directors = data.crew.filter(c => c.job === 'Director').map(d => d.name).join(', ');
+                            if (directors) crewText += `<strong>Directed by:</strong> ${directors}<br>`;
+                        }
+                        if(data.cast) {
+                            const cast = data.cast.slice(0, 3).map(c => c.name).join(', ');
+                            if (cast) crewText += `<strong>Starring:</strong> ${cast}`;
+                        }
+                        this.els.dCredits.innerHTML = crewText;
+                    }).catch(e => console.log(e));
+                
+                const confidence = LocalAI.confidenceScore(item, { genreWeights: this.genreWeights, themeWeights: this.themeWeights });
                 
                 if(sourceTab === 'explore') {
                     this.els.dInsightBox.className = "border rounded-xl p-3 flex gap-3 items-start shrink-0 bg-zinc-800/80 border-zinc-700/50 mb-4";
                     this.els.dInsightLabel.textContent = "Global Discovery";
                     this.els.dInsightLabel.className = "text-[10px] font-bold uppercase tracking-wider mb-0.5 text-zinc-400";
-                    this.els.dReason.textContent = "Found via Explore Charts. Tap 'Train AI' to inject this into your personal algorithm.";
+                    this.els.dReason.textContent = `Found via Explore Charts. AI Confidence: ${(confidence * 100).toFixed(1)}%`;
+                } else if(sourceTab === 'search') {
+                    this.els.dInsightBox.className = "border rounded-xl p-3 flex gap-3 items-start shrink-0 bg-zinc-800/80 border-zinc-700/50 mb-4";
+                    this.els.dInsightLabel.textContent = "Manual Search";
+                    this.els.dInsightLabel.className = "text-[10px] font-bold uppercase tracking-wider mb-0.5 text-zinc-400";
+                    this.els.dReason.textContent = `Add this to your lists to customize your feed.`;
                 } else {
                     this.els.dInsightBox.className = "border rounded-xl p-3 flex gap-3 items-start shrink-0 bg-indigo-500/10 border-indigo-500/30 mb-4";
                     this.els.dInsightLabel.textContent = "Why it's recommended";
                     this.els.dInsightLabel.className = "text-[10px] font-bold uppercase tracking-wider mb-0.5 text-indigo-400";
-                    this.els.dReason.textContent = item.matchReason || "Saved to your list.";
+                    this.els.dReason.textContent = `${item.matchReason || "Saved to your list."} (AI Confidence: ${(confidence * 100).toFixed(1)}%)`;
                 }
 
-                this.els.dLikeBtn.onclick = () => {
-                    this.liked.push(item); this.swipedIds.add(item.id); this.updateBadge();
-                    item.genres.forEach(g => this.genreWeights[g] += 1);
-                    this.closeDetails();
-                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
-                    this.updateAlgorithmLogic(true); this.saveState();
-                };
-                this.els.dTrainBtn.onclick = async () => {
-                    this.closeDetails(); this.showLearningIndicator();
-                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
-                    await this.trainAlgorithm(item, `Learned from manual training on ${item.title}`);
-                };
+                // Check where item lives
+                const inWatchLater = this.watchLater.some(i => i.id === item.id);
+                const inWatched = this.watched.some(i => i.id === item.id);
 
-                if (sourceTab === 'matches') { this.els.dLikeBtn.classList.add('hidden'); this.els.dTrainBtn.classList.remove('hidden'); } 
-                else { this.els.dLikeBtn.classList.remove('hidden'); this.els.dTrainBtn.classList.remove('hidden'); }
+                // Setup Actions
+                this.els.dWatchLaterBtn.onclick = () => this.addToWatchLater(item);
+                this.els.dWatchedBtn.onclick = () => this.markWatchedAndTrain(item, `Learned from manual training on ${item.title}`);
+                this.els.dRemoveBtn.onclick = () => this.removeFromLists(item);
+
+                // Visibility Logic
+                this.els.dWatchLaterBtn.classList.remove('hidden');
+                this.els.dWatchedBtn.classList.remove('hidden');
+                this.els.dRemoveBtn.classList.add('hidden');
+
+                if (inWatched) {
+                    this.els.dWatchLaterBtn.classList.add('hidden');
+                    this.els.dWatchedBtn.classList.add('hidden');
+                    this.els.dRemoveBtn.classList.remove('hidden');
+                } else if (inWatchLater) {
+                    this.els.dWatchLaterBtn.classList.add('hidden');
+                    this.els.dRemoveBtn.classList.remove('hidden');
+                }
 
                 this.els.detailsModal.classList.remove('hidden'); this.els.detailsModal.classList.add('flex');
             },
             closeDetails: function() { this.els.detailsModal.classList.add('hidden'); this.els.detailsModal.classList.remove('flex'); this.activeDetailsItem = null; },
 
+            addToWatchLater: function(item) {
+                this.watchLater.push(item);
+                this.swipedIds.add(item.id); // hide from feed
+                this.updateBadge();
+                this.closeDetails();
+                if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
+                this.saveState();
+                if (this.phase === 'matches') this.renderMatches();
+            },
+
+            markWatchedAndTrain: async function(item, networkReason, skipRender=false) {
+                // Remove from WatchLater if it was there
+                this.watchLater = this.watchLater.filter(i => i.id !== item.id);
+                
+                this.watched.push(item);
+                this.swipedIds.add(item.id);
+                this.updateBadge();
+
+                if(!skipRender) {
+                    this.closeDetails();
+                    this.showLearningIndicator();
+                    if (['foryou', 'movies', 'tvshows'].includes(this.phase)) this.refreshFeedOnly(item.id);
+                }
+
+                const learningRate = LocalAI.adaptiveLearningRate(this.interactionHistory.length);
+                this.interactionHistory.push({ type: 'watched', item: item, timestamp: Date.now(), rate: learningRate });
+                
+                item.genres.forEach(g => this.genreWeights[g] += 4 * learningRate);
+                const themes = this.extractThemes(item.description);
+                themes.forEach(t => this.themeWeights[t] = (this.themeWeights[t] || 0) + 1.5 * learningRate);
+                
+                await this.fetchAndProcessCredits(item);
+                await this.fetchDeepDive(item, networkReason);
+                
+                if(!skipRender) {
+                    this.updateAlgorithmLogic(true); 
+                    this.saveState();
+                    if (this.phase === 'matches') this.renderMatches();
+                }
+            },
+
+            removeFromLists: function(item) {
+                const inWatched = this.watched.some(i => i.id === item.id);
+                
+                this.watched = this.watched.filter(i => i.id !== item.id);
+                this.watchLater = this.watchLater.filter(i => i.id !== item.id);
+                this.swipedIds.delete(item.id);
+                this.updateBadge();
+
+                if (inWatched) {
+                    // Reverse Weights
+                    const interactions = this.interactionHistory.filter(i => i.item.id === item.id);
+                    interactions.forEach(interaction => {
+                        const r = interaction.rate || 1;
+                        item.genres.forEach(g => { if(this.genreWeights[g]) this.genreWeights[g] -= (4 * r); });
+                        const themes = this.extractThemes(item.description);
+                        themes.forEach(t => { if(this.themeWeights[t]) this.themeWeights[t] -= (1.5 * r); });
+                    });
+                    this.interactionHistory = this.interactionHistory.filter(i => i.item.id !== item.id);
+                }
+
+                this.closeDetails();
+                this.updateAlgorithmLogic(true);
+                if (this.phase === 'matches') this.renderMatches(); 
+                this.saveState();
+            },
+
             // --- ALGORITHM & BRAIN ---
-            extractThemes: function(text) { if (!text) return []; const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/); return Array.from(new Set(words.filter(w => w.length > 3 && !STOP_WORDS.has(w)))); },
+            extractThemes: function(text) { 
+                if (!text) return []; 
+                const words = text.toLowerCase().replace(/[^\w\s]/g, '').split(/\s+/); 
+                return Array.from(new Set(words.filter(w => w.length > 3 && !STOP_WORDS.has(w)))); 
+            },
             fetchAndProcessCredits: async function(item) {
                 const type = item.type === "Movie" ? "movie" : "tv";
                 try {
@@ -691,6 +967,7 @@
                         const key = `crew_${c.id}`;
                         this.crewWeights[key] = (this.crewWeights[key] || 0) + 1;
                         this.crewNames[key] = c.name; 
+                        
                         if (this.crewWeights[key] >= 2 && !this.fetchedCrew.has(key)) {
                             this.fetchedCrew.add(key);
                             this.fetchWorksByPerson(c.id, c.name); 
@@ -711,24 +988,31 @@
                         ...data[0].results.map(i => this.normalizeItem(i, "Movie", reason)),
                         ...data[1].results.map(i => this.normalizeItem(i, "TV Show", reason))
                     ].filter(i => i.image);
-                    const existingIds = new Set(this.rawApiData.map(i => i.id));
-                    const filteredNew = newItems.filter(i => !existingIds.has(i.id));
-                    this.rawApiData = [...this.rawApiData, ...filteredNew];
+                    
+                    this.rawApiData.push(...newItems);
                 } catch (e) {}
             },
-            trainAlgorithm: async function(item, networkReason) {
-                this.liked.push(item); this.swipedIds.add(item.id); this.updateBadge();
-                item.genres.forEach(g => this.genreWeights[g] += 4);
-                const themes = this.extractThemes(item.description);
-                themes.forEach(t => this.themeWeights[t] = (this.themeWeights[t] || 0) + 1.5);
-                await this.fetchAndProcessCredits(item);
-                await this.fetchDeepDive(item, networkReason);
-                this.updateAlgorithmLogic(true); this.saveState();
-            },
-            normalizeItem: function(item, type, sourceReason = null) {
-                const id = `${type === 'Movie' ? 'movie' : 'tv'}_${item.id}`;
+            normalizeItem: function(item, fallbackType, sourceReason = null) {
+                let type = fallbackType;
+                if (item.media_type) type = item.media_type === 'tv' ? 'TV Show' : 'Movie';
+                else if (item.first_air_date !== undefined || item.name !== undefined) type = 'TV Show';
+                else if (item.release_date !== undefined || item.title !== undefined) type = 'Movie';
+
+                const id = `${type === 'Movie' ? 'movie' : 'tv'}_${String(item.id)}`;
                 if (sourceReason) this.sourceMap[id] = sourceReason;
-                return { id: id, rawId: item.id, title: item.title || item.name, type: type, year: (item.release_date || item.first_air_date || "N/A").substring(0, 4), genres: (item.genre_ids || []).map(gid => GENRE_MAP[gid]).filter(Boolean), description: item.overview || "No description available.", image: item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : null, rating: item.vote_average ? item.vote_average.toFixed(1) : "N/A" };
+                
+                let year = "N/A";
+                if (type === 'Movie') year = (item.release_date || "N/A").substring(0, 4);
+                else year = (item.last_air_date || item.first_air_date || "N/A").substring(0, 4);
+                
+                return { 
+                    id: id, rawId: item.id, title: item.title || item.name, type: type, year: year,
+                    genres: (item.genre_ids || []).map(gid => GENRE_MAP[gid]).filter(Boolean), 
+                    description: item.overview || "No description available.", 
+                    image: item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : null, 
+                    rating: item.vote_average ? item.vote_average.toFixed(1) : "0.0",
+                    popularity: item.popularity || 0
+                };
             },
             fetchDeepDive: async function(item, explicitReason) {
                 const type = item.type === "Movie" ? "movie" : "tv";
@@ -737,9 +1021,7 @@
                     const data = await res.json();
                     if (data.results) {
                         const newRecs = data.results.slice(0, 15).map(rec => this.normalizeItem(rec, item.type, explicitReason)).filter(rec => rec.image);
-                        const existingIds = new Set(this.rawApiData.map(i => i.id));
-                        const newItems = newRecs.filter(i => !existingIds.has(i.id));
-                        this.rawApiData = [...this.rawApiData, ...newItems];
+                        this.rawApiData.push(...newRecs);
                     }
                 } catch (err) {}
             },
@@ -750,15 +1032,22 @@
                     const responses = await Promise.all(endpoints);
                     const data = await Promise.all(responses.map(res => res.json()));
                     const combinedData = [...data[0].results.map(item => this.normalizeItem(item, "Movie")), ...data[1].results.map(item => this.normalizeItem(item, "TV Show"))].filter(item => item.image && item.description.length > 20);
-                    const existingIds = new Set(this.rawApiData.map(i => i.id));
-                    const newItems = combinedData.filter(i => !existingIds.has(i.id));
-                    this.rawApiData = [...this.rawApiData, ...newItems];
+                    this.rawApiData.push(...combinedData);
                 } catch (err) {} finally { this.isLoading = false; }
             },
             updateAlgorithmLogic: function(skipRender = false) {
+                const uniqueMap = new Map();
+                this.rawApiData.forEach(item => {
+                    if (!uniqueMap.has(item.id)) uniqueMap.set(item.id, item);
+                });
+                this.rawApiData = Array.from(uniqueMap.values());
+
                 const unswiped = this.rawApiData.filter(item => !this.swipedIds.has(item.id));
+                const userProfile = { genreWeights: this.genreWeights, themeWeights: this.themeWeights };
+                
                 const scoredData = unswiped.map(item => {
                     let score = 0; let bestMatchReason = ""; let maxSubScore = 0; let genreScore = 0;
+                    
                     item.genres.forEach(genre => {
                         let baseWeight = this.genreWeights[genre] || 0; 
                         if (['Action', 'Thriller', 'Horror', 'Crime'].includes(genre)) baseWeight += (this.vibes.intensity * 2);
@@ -768,6 +1057,9 @@
                         genreScore += baseWeight;
                     });
                     score += genreScore;
+                    
+                    const aiScore = LocalAI.contentBasedScore(item, userProfile);
+                    score += aiScore;
                     
                     let themeScore = 0; const itemThemes = this.extractThemes(item.description); let topTheme = ""; let topThemeVal = 0;
                     itemThemes.forEach(t => {
@@ -779,13 +1071,14 @@
                     score += (themeScore * 0.8);
                     
                     const source = this.sourceMap[item.id] || "";
-                    if (source.includes("favorite cast/crew")) { score += 25; bestMatchReason = source; maxSubScore = 25; }
+                    if (source.includes("favorite cast/crew")) { score += 50; bestMatchReason = source; maxSubScore = 50; }
                     if (source.includes("seed") || source.includes("manual")) { score += 15; if (15 > maxSubScore) { bestMatchReason = source; maxSubScore = 15; } }
                     else if (source.includes("train")) { score += 10; if (10 > maxSubScore) { bestMatchReason = source; maxSubScore = 10; } }
                     
-                    score += Math.random(); 
+                    score += Math.random() * 2.5; 
                     if (!bestMatchReason) {
-                        if (themeScore > genreScore && topTheme && topThemeVal > 2) { bestMatchReason = `Shares plot themes like '${topTheme}'.`; }
+                        if (aiScore > genreScore && aiScore > 3) { bestMatchReason = `AI matched based on content similarity.`; }
+                        else if (themeScore > genreScore && topTheme && topThemeVal > 2) { bestMatchReason = `Shares plot themes like '${topTheme}'.`; }
                         else if (item.genres.length > 0) {
                             const topG = item.genres.reduce((a, b) => (this.genreWeights[a] || 0) > (this.genreWeights[b] || 0) ? a : b);
                             if (this.genreWeights[topG] > 3) bestMatchReason = `Learned affinity for ${topG}.`;
@@ -801,30 +1094,43 @@
 
             // --- RENDER FEED & UTILS ---
             renderFeed: function(append = false) {
-                if (!append) { this.els.feedGrid.innerHTML = ''; this.els.feedContainer.scrollTop = 0; }
+                if (!append) { this.els.feedGrid.innerHTML = ''; this.els.feedContainer.scrollTop = 0; this.renderedIds.clear(); }
                 let currentList = this.scoredItems;
                 if (this.phase === 'movies') currentList = currentList.filter(i => i.type === 'Movie');
                 if (this.phase === 'tvshows') currentList = currentList.filter(i => i.type === 'TV Show');
                 if (this.filters.genre) currentList = currentList.filter(i => i.genres.includes(this.filters.genre));
-                if (this.filters.minYear) currentList = currentList.filter(i => parseInt(i.year) >= parseInt(this.filters.minYear));
+                if (this.filters.yearStart) currentList = currentList.filter(i => parseInt(i.year) >= parseInt(this.filters.yearStart));
+                if (this.filters.yearEnd) currentList = currentList.filter(i => parseInt(i.year) <= parseInt(this.filters.yearEnd));
                 if (this.filters.minRating > 0) currentList = currentList.filter(i => parseFloat(i.rating) >= this.filters.minRating);
                 
-                if (currentList.length === 0) { this.els.feedEmpty.classList.remove('hidden'); this.els.feedGrid.classList.add('hidden'); return; }
+                currentList = currentList.filter(i => !this.swipedIds.has(i.id));
+
+                if (currentList.length === 0 && !append) { this.els.feedEmpty.classList.remove('hidden'); this.els.feedGrid.classList.add('hidden'); return; }
                 this.els.feedEmpty.classList.add('hidden'); this.els.feedGrid.classList.remove('hidden');
                 
-                const startIndex = append ? this.els.feedGrid.children.length : 0;
-                const itemsToRender = currentList.slice(startIndex, this.visibleCount);
+                let itemsToRender = [];
+                if (!append) {
+                    itemsToRender = currentList.slice(0, this.visibleCount);
+                } else {
+                    itemsToRender = currentList.filter(i => !this.renderedIds.has(i.id)).slice(0, 20);
+                    this.visibleCount = this.renderedIds.size + itemsToRender.length;
+                }
+                
                 itemsToRender.forEach((item, idx) => {
+                    this.renderedIds.add(item.id);
                     const div = document.createElement('div');
                     div.setAttribute('data-id', item.id);
                     div.className = "bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 flex flex-col group cursor-pointer hover:border-indigo-500 hover:shadow-[0_0_15px_rgba(79,70,229,0.2)] transition-all fade-in relative";
                     if (!append) div.style.animationDelay = `${idx * 20}ms`;
                     div.onclick = () => this.openDetails(item, 'feed');
-                    const isStrongMatch = item.matchReason.includes('seed') || item.matchReason.includes('train') || item.matchReason.includes('favorite');
+                    const isStrongMatch = item.matchReason.includes('seed') || item.matchReason.includes('train') || item.matchReason.includes('favorite') || item.matchReason.includes('AI matched');
                     div.innerHTML = `
                         ${isStrongMatch ? '<div class="absolute top-0 right-0 w-8 h-8 bg-indigo-500 rounded-bl-2xl z-10 flex items-center justify-center"><i class="ph-bold ph-brain text-white text-xs"></i></div>' : ''}
                         <div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden">
                             <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+                            <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/10 flex items-center gap-1">
+                                <i class="${item.type === 'Movie' ? 'ph-fill ph-film-strip' : 'ph-fill ph-television'}"></i> ${item.type === 'Movie' ? 'Movie' : 'TV'}
+                            </div>
                             <div class="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div>
                         </div>
                         <div class="p-3 flex-1 flex flex-col justify-between">
@@ -842,27 +1148,46 @@
                 if (card) { card.style.transition = 'all 0.3s ease'; card.classList.remove('opacity-100', 'scale-100'); card.classList.add('opacity-0', 'scale-90'); setTimeout(() => card.remove(), 300); }
             },
             loadMoreFeed: async function() {
-                if (this.isLoading) return;
+                if (this.isLoadingMore || this.isLoading) return;
+                this.isLoadingMore = true;
                 this.els.infiniteLoader.classList.remove('hidden');
-                if (this.visibleCount + 20 >= this.scoredItems.length) {
+                
+                if (this.renderedIds.size + 20 >= this.scoredItems.length) {
                     this.currentPage++; await this.fetchBaselineContent(this.currentPage); this.updateAlgorithmLogic(true); 
                 }
-                this.visibleCount += 20; this.renderFeed(true); 
+                
+                this.renderFeed(true); 
                 this.els.infiniteLoader.classList.add('hidden');
+                setTimeout(() => { this.isLoadingMore = false; }, 300);
             },
             renderMatches: function() {
-                if (this.liked.length === 0) { this.els.matchesEmpty.classList.remove('hidden'); this.els.matchesGrid.classList.add('hidden'); return; }
+                const list = this.listTab === 'watchLater' ? this.watchLater : this.watched;
+                
+                if (list.length === 0) { this.els.matchesEmpty.classList.remove('hidden'); this.els.matchesGrid.classList.add('hidden'); return; }
                 this.els.matchesEmpty.classList.add('hidden'); this.els.matchesGrid.classList.remove('hidden'); this.els.matchesGrid.innerHTML = '';
-                this.liked.forEach(item => {
+                list.forEach(item => {
                     const div = document.createElement('div');
                     div.className = "bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 flex flex-col group cursor-pointer hover:border-indigo-500 transition-colors shadow-lg fade-in";
                     div.onclick = () => this.openDetails(item, 'matches');
-                    div.innerHTML = `<div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden"><img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" /><div class="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div></div><div class="p-3"><h3 class="font-bold text-sm leading-tight mb-1 line-clamp-1">${item.title}</h3><p class="text-xs text-zinc-400">${item.year} • ${item.type}</p></div>`;
+                    div.innerHTML = `
+                        <div class="aspect-[2/3] bg-zinc-800 relative overflow-hidden">
+                            <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300" />
+                            <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-white border border-white/10 flex items-center gap-1">
+                                <i class="${item.type === 'Movie' ? 'ph-fill ph-film-strip' : 'ph-fill ph-television'}"></i> ${item.type === 'Movie' ? 'Movie' : 'TV'}
+                            </div>
+                            <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-400 border border-white/10">★ ${item.rating}</div>
+                        </div>
+                        <div class="p-3">
+                            <h3 class="font-bold text-sm leading-tight mb-1 line-clamp-1">${item.title}</h3>
+                            <p class="text-xs text-zinc-400">${item.year} • ${item.type}</p>
+                        </div>
+                    `;
                     this.els.matchesGrid.appendChild(div);
                 });
             },
             updateBadge: function() {
-                if (this.liked.length > 0) { this.els.matchBadge.classList.remove('hidden'); this.els.matchBadge.textContent = this.liked.length; } 
+                const total = this.watchLater.length + this.watched.length;
+                if (total > 0) { this.els.matchBadge.classList.remove('hidden'); this.els.matchBadge.textContent = total; } 
                 else { this.els.matchBadge.classList.add('hidden'); }
             },
             showLoadingState: function(text) { this.els.loadingText.textContent = text; this.els.loadingState.classList.remove('hidden'); },
@@ -871,7 +1196,7 @@
             resetProfile: function() {
                 if(confirm("Are you sure you want to wipe the AI's memory and start over?")) {
                     localStorage.removeItem('bingeForYouState');
-                    this.genreWeights = {}; this.themeWeights = {}; this.crewWeights = {}; this.crewNames = {}; this.fetchedCrew = new Set(); this.sourceMap = {}; this.swipedIds = new Set(); this.liked = []; this.rawApiData = []; this.scoredItems = []; this.seedItems = [];
+                    this.genreWeights = {}; this.themeWeights = {}; this.crewWeights = {}; this.crewNames = {}; this.fetchedCrew = new Set(); this.sourceMap = {}; this.swipedIds = new Set(); this.watchLater = []; this.watched = []; this.rawApiData = []; this.scoredItems = []; this.seedItems = []; this.interactionHistory = [];
                     this.updateBadge(); this.renderSeedVault(); this.setPhase('onboarding');
                 }
             }
